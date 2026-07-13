@@ -4,8 +4,8 @@
 
 // 1. 상태 관리 (State)
 let state = {
-    currentDate: new Date(2026, 6, 13), // 2026년 7월 13일을 기준일로 설정 (오늘)
-    selectedDate: new Date(2026, 6, 13),
+    currentDate: new Date(), // 실제 오늘 날짜 기준으로 자동 설정
+    selectedDate: new Date(),
     activeTab: 'tab-calendar',
     filterCategory: 'all',
     events: [],
@@ -61,7 +61,14 @@ function getChoseung(str) {
 function loadLocalStorageData() {
     try {
         const localEvents = localStorage.getItem('teacherschedule_events');
-        state.events = localEvents ? JSON.parse(localEvents) : [...MOCK_EVENTS];
+        if (localEvents) {
+            state.events = JSON.parse(localEvents);
+            state.events.forEach(e => {
+                if (e.desc === '나이스 연동 공식 학사일정') e.desc = '';
+            });
+        } else {
+            state.events = [...MOCK_EVENTS];
+        }
     } catch (e) {
         console.warn('Failed to parse local events:', e);
         state.events = [...MOCK_EVENTS];
@@ -104,7 +111,11 @@ function initFirebase(config) {
         unsubscribeEvents = db.collection('schedules').onSnapshot((snapshot) => {
             let remoteEvents = [];
             snapshot.forEach(doc => {
-                remoteEvents.push({ id: doc.id, ...doc.data() });
+                const data = doc.data();
+                if (data.desc === '나이스 연동 공식 학사일정') {
+                    data.desc = '';
+                }
+                remoteEvents.push({ id: doc.id, ...data });
             });
             
             // 만약 Firestore가 완전히 비어 있고 관리자 권한 상태라면, 로컬 데이터를 마이그레이션(업로드)
@@ -424,10 +435,11 @@ function renderDayEvents() {
             case 'etc': categoryText = '내부'; break;
         }
         
+        const descHtml = e.desc && e.desc.trim() ? `<p>${escapeHTML(e.desc)}</p>` : '';
         item.innerHTML = `
             <div class="event-item-content">
                 <h4>${escapeHTML(e.title)}</h4>
-                <p>${escapeHTML(e.desc || '상세 내용 없음')}</p>
+                ${descHtml}
             </div>
             <span class="event-item-meta">${categoryText}</span>
         `;
@@ -743,7 +755,7 @@ async function syncNeisData() {
                 const rawDate = row.AA_YMD; // YYYYMMDD
                 const formattedDate = `${rawDate.substring(0,4)}-${rawDate.substring(4,6)}-${rawDate.substring(6,8)}`;
                 const title = row.EVENT_NM;
-                const desc = row.EVENT_CN || '나이스 연동 공식 학사일정';
+                const desc = row.EVENT_CN ? row.EVENT_CN.trim() : '';
                 
                 const exists = state.events.some(e => e.date === formattedDate && e.title === title);
                 if (!exists) {
@@ -857,7 +869,7 @@ async function autoSyncNeisBackground() {
                 const rawDate = row.AA_YMD; // YYYYMMDD
                 const formattedDate = `${rawDate.substring(0,4)}-${rawDate.substring(4,6)}-${rawDate.substring(6,8)}`;
                 const title = row.EVENT_NM;
-                const desc = row.EVENT_CN || '나이스 연동 공식 학사일정';
+                const desc = row.EVENT_CN ? row.EVENT_CN.trim() : '';
                 
                 const exists = state.events.some(e => e.date === formattedDate && e.title === title);
                 if (!exists) {
