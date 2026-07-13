@@ -597,11 +597,6 @@ function showEventDetail(eventObj) {
         document.getElementById('event-title').value = eventObj.title;
         document.getElementById('event-date').value = eventObj.date;
         
-        let formCategory = eventObj.category;
-        if (formCategory !== 'neis') {
-            formCategory = 'internal';
-        }
-        document.getElementById('event-category').value = formCategory;
         document.getElementById('event-desc').value = eventObj.desc || '';
         document.getElementById('modal-event-title').innerText = '일정 수정';
         window.openModal('modal-event');
@@ -618,7 +613,7 @@ document.getElementById('form-event').addEventListener('submit', async (e) => {
     const id = document.getElementById('event-id').value || 'ev-' + Date.now();
     const title = document.getElementById('event-title').value.trim();
     const date = document.getElementById('event-date').value;
-    const category = document.getElementById('event-category').value;
+    const category = 'internal'; // 수동 추가 일정은 항상 학교 내부일정(internal)으로 고정
     const desc = document.getElementById('event-desc').value.trim();
     
     if (!title || !date) return;
