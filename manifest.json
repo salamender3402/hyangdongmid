@@ -1,0 +1,18 @@
+{
+  "name": "향동중학교 학사일정 관리",
+  "short_name": "향동중 학사일정",
+  "description": "교직원 전용 스마트 학사일정 및 비상연락망 관리 프로그램",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

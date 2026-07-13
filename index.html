@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>향동중학교 학사일정 관리</title>
+    
+    <!-- PWA 관련 메타 태그 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="향동중 학사일정">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Google Fonts 및 Icon -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS 연결 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 상단 헤더 -->
+        <header class="app-header">
+            <div class="header-logo">
+                <i class="fa-solid fa-calendar-check logo-icon"></i>
+                <div class="logo-text">
+                    <h1>향동중학교 학사일정 관리</h1>
+                </div>
+            </div>
+            <div class="header-status">
+                <span class="badge badge-info" id="status-date">오늘: --</span>
+            </div>
+        </header>
+
+        <!-- PWA 설치 안내 배너 -->
+        <div id="install-banner" class="install-banner hidden">
+            <div class="banner-content">
+                <i class="fa-solid fa-mobile-screen-button banner-icon"></i>
+                <p>앱으로 설치하여 홈 화면에서 편리하게 사용하세요!</p>
+            </div>
+            <button id="btn-install" class="btn btn-primary btn-sm">앱 설치</button>
+        </div>
+
+        <!-- 메인 콘텐츠 영역 -->
+        <main class="app-content">
+            <!-- 탭 콘텐츠: 달력 화면 -->
+            <section id="tab-calendar" class="tab-pane active">
+                <div class="calendar-header">
+                    <div class="calendar-nav">
+                        <button id="btn-prev-month" class="btn-nav"><i class="fa-solid fa-chevron-left"></i></button>
+                        <h2 id="calendar-title">2026년 7월</h2>
+                        <button id="btn-next-month" class="btn-nav"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                    <div class="calendar-actions">
+                        <button id="btn-add-event-quick" class="btn btn-primary admin-only"><i class="fa-solid fa-plus"></i> 일정 추가</button>
+                    </div>
+                </div>
+
+                <!-- 일정 필터 버튼 -->
+                <div class="event-filters">
+                    <button class="filter-btn active" data-filter="all">전체</button>
+                    <button class="filter-btn" data-filter="neis"><span class="dot dot-neis"></span>공식 학사일정</button>
+                    <button class="filter-btn" data-filter="internal"><span class="dot dot-internal"></span>학교 내부일정</button>
+                </div>
+
+                <!-- 달력 본체 -->
+                <div class="calendar-card">
+                    <div class="calendar-weekdays">
+                        <div class="weekday sun">일</div>
+                        <div class="weekday">월</div>
+                        <div class="weekday">화</div>
+                        <div class="weekday">수</div>
+                        <div class="weekday">목</div>
+                        <div class="weekday">금</div>
+                        <div class="weekday sat">토</div>
+                    </div>
+                    <div id="calendar-days" class="calendar-days">
+                        <!-- JS로 동적 렌더링 -->
+                    </div>
+                </div>
+
+                <!-- 선택한 날짜의 일정 상세 정보 -->
+                <div class="day-events-section">
+                    <h3 class="section-title"><i class="fa-regular fa-clock"></i> <span id="selected-date-str">--월 --일</span>의 일정</h3>
+                    <div id="day-events-list" class="day-events-list">
+                        <!-- JS로 일정 리스트 렌더링 -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 탭 콘텐츠: 급식 정보 -->
+            <section id="tab-meals" class="tab-pane">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-utensils"></i> 오늘의 급식</h2>
+                    <p>향동중학교 오늘의 영양 급식 메뉴입니다.</p>
+                </div>
+                
+                <!-- 급식 카드 -->
+                <div class="card meal-card">
+                    <div class="meal-header-row">
+                        <button id="btn-prev-meal" class="btn-circle"><i class="fa-solid fa-chevron-left"></i></button>
+                        <h3 id="meal-date-str">--년 --월 --일</h3>
+                        <button id="btn-next-meal" class="btn-circle"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                    <div class="card-body">
+                        <div id="meal-content-area" class="meal-container">
+                            <!-- JS로 급식 식단 리스트 렌더링 -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 영양 및 알레르기 안내 카드 -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-circle-info"></i> 영양 및 원산지 정보</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="meal-meta-item">
+                            <span>총 칼로리</span>
+                            <strong id="meal-calories">- Kcal</strong>
+                        </div>
+                        <hr>
+                        <div class="meal-meta-item flex-col">
+                            <span>원산지 표시</span>
+                            <p id="meal-origin" class="text-muted">원산지 정보가 없습니다.</p>
+                        </div>
+                        <hr>
+                        <div class="meal-meta-item flex-col">
+                            <span>알레르기 정보</span>
+                            <p id="meal-allergy" class="text-muted">알레르기 물질 정보가 없습니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 탭 콘텐츠: 비상연락망 -->
+            <section id="tab-contacts" class="tab-pane">
+                <div class="section-header">
+                    <div class="header-with-action">
+                        <div>
+                            <h2><i class="fa-solid fa-address-book"></i> 교직원 비상연락망</h2>
+                            <p>전체 교직원의 직위, 부서, 연락처를 조회하고 빠르게 통화할 수 있습니다.</p>
+                        </div>
+                        <button id="btn-add-contact" class="btn btn-primary admin-only"><i class="fa-solid fa-user-plus"></i> 연락처 등록</button>
+                    </div>
+                </div>
+
+                <!-- 검색창 -->
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="contact-search" placeholder="이름, 부서, 직위, 초성으로 검색 (예: ㄱㅈㄷ)">
+                </div>
+
+                <!-- 연락망 그리드 -->
+                <div id="contacts-grid" class="contacts-grid">
+                    <!-- JS로 카드 동적 렌더링 -->
+                </div>
+            </section>
+
+            <!-- 탭 콘텐츠: 설정 -->
+            <section id="tab-settings" class="tab-pane">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-gears"></i> 앱 설정</h2>
+                    <p>관리자 권한 인증 및 클라우드 데이터 연동 설정을 관리합니다.</p>
+                </div>
+
+                <!-- 1. 관리자 권한 인증 카드 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-user-shield"></i> 교직원 관리자 권한 인증</h3>
+                        <span id="badge-admin-status" class="badge">인증 필요</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group" id="admin-auth-input-group">
+                            <label for="admin-passcode">관리자 인증 코드</label>
+                            <div class="input-with-button">
+                                <input type="password" id="admin-passcode" class="form-control" placeholder="6자리 코드 입력">
+                                <button id="btn-verify-admin" class="btn btn-primary">인증</button>
+                            </div>
+                        </div>
+                        <div id="admin-success-box" class="info-box hidden" style="background-color: #f0fdf4; border-color: #dcfce7; color: #166534;">
+                            <i class="fa-solid fa-shield-check"></i>
+                            <div>
+                                <p><strong>관리자 인증 성공!</strong></p>
+                                <p>학사일정 추가/수정/삭제 및 대량 파일 등록 권한이 활성화되었습니다.</p>
+                            </div>
+                        </div>
+                        <button id="btn-logout-admin" class="btn btn-danger btn-block hidden"><i class="fa-solid fa-right-from-bracket"></i> 관리자 로그아웃</button>
+                    </div>
+                </div>
+
+                <!-- 2. 파이어베이스 클라우드 동기화 카드 -->
+                <div class="card mt-4 admin-only">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-cloud"></i> 실시간 클라우드 DB 연동 설정</h3>
+                        <span id="badge-db-status" class="badge">로컬 모드</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">파이어베이스(Firestore) 정보를 입력하면 자동으로 전 교사의 기기와 실시간 데이터가 연동됩니다.</p>
+                        
+                        <div class="form-group">
+                            <label for="fb-project-id">Firebase Project ID</label>
+                            <input type="text" id="fb-project-id" class="form-control" placeholder="예: teacherschedule-12345">
+                        </div>
+                        <div class="form-group">
+                            <label for="fb-api-key">Firebase API Key</label>
+                            <input type="password" id="fb-api-key" class="form-control" placeholder="API Key 입력">
+                        </div>
+                        <div class="form-group">
+                            <label for="fb-app-id">Firebase App ID</label>
+                            <input type="text" id="fb-app-id" class="form-control" placeholder="예: 1:12345:web:abcd">
+                        </div>
+                        
+                        <button id="btn-save-firebase" class="btn btn-primary btn-block"><i class="fa-solid fa-cloud-arrow-up"></i> 클라우드 DB 연동 저장</button>
+                        <button id="btn-disconnect-firebase" class="btn btn-danger btn-block mt-2 hidden"><i class="fa-solid fa-cloud-slash"></i> 연동 해제 및 로컬 모드 전환</button>
+                    </div>
+                </div>
+
+                <!-- 2.5 구글 스프레드시트 연동 카드 (관리자 전용) -->
+                <div class="card mt-4 admin-only">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-file-excel"></i> 구글 스프레드시트 일정 일괄 연동</h3>
+                        <span id="badge-gsheet-status" class="badge">설정 필요</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">구글 스프레드시트 공유 링크(뷰어 권한)를 등록하면 엑셀 형태로 작성된 대량의 학사일정을 한 번에 동기화할 수 있습니다.</p>
+                        <div class="form-group">
+                            <label for="gsheet-url">구글 스프레드시트 공유 링크</label>
+                            <input type="text" id="gsheet-url" class="form-control" placeholder="https://docs.google.com/spreadsheets/d/.../edit?usp=sharing">
+                        </div>
+                        <button id="btn-sync-gsheet" class="btn btn-primary btn-block"><i class="fa-solid fa-rotate"></i> 구글 시트 일정 일괄 동기화</button>
+                    </div>
+                </div>
+
+                <!-- 2.6 나이스(NEIS) 학사일정 동기화 카드 (관리자 전용) -->
+                <div class="card mt-4 admin-only">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-cloud-arrow-down"></i> 나이스(NEIS) 학사일정 동기화</h3>
+                        <span class="badge badge-success">공식 API 연동</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-row">
+                            <div class="form-group col-6">
+                                <label for="neis-office-code">시도교육청코드</label>
+                                <select id="neis-office-code" class="form-control">
+                                    <option value="J10" selected>경기도교육청</option>
+                                    <option value="B10">서울특별시교육청</option>
+                                    <option value="C10">부산광역시교육청</option>
+                                    <option value="D10">대구광역시교육청</option>
+                                    <option value="E10">인천광역시교육청</option>
+                                    <option value="F10">광주광역시교육청</option>
+                                    <option value="G10">대전광역시교육청</option>
+                                    <option value="H10">울산광역시교육청</option>
+                                    <option value="I10">세종특별자치시교육청</option>
+                                    <option value="K10">강원특별자치도교육청</option>
+                                    <option value="M10">충청북도교육청</option>
+                                    <option value="N10">충청남도교육청</option>
+                                    <option value="P10">전북특별자치도교육청</option>
+                                    <option value="Q10">전라남도교육청</option>
+                                    <option value="R10">경상북도교육청</option>
+                                    <option value="S10">경상남도교육청</option>
+                                    <option value="T10">제주특별자치도교육청</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-6">
+                                <label for="neis-school-code">행정표준기관코드 (8자리)</label>
+                                <input type="text" id="neis-school-code" class="form-control" placeholder="향동중학교 코드" value="7621365">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-12">
+                                <label for="neis-year">대상 학년도</label>
+                                <select id="neis-year" class="form-control">
+                                    <option value="2026" selected>2026학년도</option>
+                                    <option value="2025">2025학년도</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="info-box">
+                            <i class="fa-solid fa-circle-info"></i>
+                            <p>향동중학교 지정 인증키로 나이스 서버에서 실시간 공식 학사일정을 당겨오며, 클라우드 DB 연동 시 전 교사의 앱에 자동 실시간 배포됩니다.</p>
+                        </div>
+                        <button id="btn-sync-neis" class="btn btn-primary btn-block"><i class="fa-solid fa-rotate"></i> 나이스 일정 불러오기</button>
+                    </div>
+                </div>
+
+                <!-- 2.7 파일 업로드 일괄 등록 카드 (관리자 전용) -->
+                <div class="card mt-4 admin-only">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-file-csv"></i> 파일 업로드로 일괄 등록</h3>
+                        <span class="badge">CSV / JSON</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="drop-zone" class="drop-zone">
+                            <i class="fa-solid fa-file-arrow-up drop-icon"></i>
+                            <p>일정 파일(CSV, JSON)을 드래그 앤 드롭하거나 클릭하여 선택하세요.</p>
+                            <input type="file" id="file-input" class="hidden" accept=".csv,.json">
+                        </div>
+                        <div class="import-help">
+                            <h4>CSV 파일 템플릿 안내</h4>
+                            <p>엑셀이나 메모장에서 아래 형식으로 열을 만들어 저장해 주시면 완벽하게 등록됩니다.</p>
+                            <code class="code-block">날짜(YYYY-MM-DD), 일정명, 상세설명</code>
+                            <div class="mt-2 text-right">
+                                <button id="btn-download-template" class="btn btn-outline btn-sm"><i class="fa-solid fa-download"></i> 템플릿 다운로드</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. PWA 상태 카드 -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-mobile"></i> 모바일 웹앱 설치</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="status-list">
+                            <div class="status-item">
+                                <span>설치 여부</span>
+                                <strong id="pwa-status">브라우저 실행 중 (설치 가능)</strong>
+                            </div>
+                            <div class="status-item">
+                                <span>오프라인 작동</span>
+                                <strong id="sw-status">설정 안 됨</strong>
+                            </div>
+                        </div>
+                        <button id="btn-pwa-install-settings" class="btn btn-outline btn-block mt-3"><i class="fa-solid fa-arrow-down-to-bracket"></i> 스마트폰 홈 화면에 설치</button>
+                    </div>
+                </div>
+
+                <!-- 4. 로컬 데이터 관리 카드 (관리자 전용) -->
+                <div class="card mt-4 admin-only">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-database"></i> 로컬 백업 및 데이터 관리</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted" style="font-size: 12px;">클라우드가 오프라인일 때 사용할 백업 파일을 생성하거나, 앱 전체 데이터를 공장 초기화합니다.</p>
+                        <div class="btn-group mt-3">
+                            <button id="btn-export-data" class="btn btn-outline"><i class="fa-solid fa-download"></i> 백업 파일 받기</button>
+                            <button id="btn-import-data-trigger" class="btn btn-outline"><i class="fa-solid fa-upload"></i> 파일로 복원</button>
+                            <input type="file" id="backup-file-input" class="hidden" accept=".json">
+                        </div>
+                        <hr>
+                        <button id="btn-reset-data" class="btn btn-danger btn-block"><i class="fa-solid fa-trash-can"></i> 전체 데이터 초기화</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 하단 탭 바 내비게이션 -->
+        <nav class="app-nav">
+            <button class="nav-item active" data-tab="tab-calendar">
+                <i class="fa-solid fa-calendar-days"></i>
+                <span>달력</span>
+            </button>
+
+            <button class="nav-item" data-tab="tab-contacts">
+                <i class="fa-solid fa-address-book"></i>
+                <span>비상연락망</span>
+            </button>
+            <button class="nav-item" data-tab="tab-meals">
+                <i class="fa-solid fa-utensils"></i>
+                <span>급식 정보</span>
+            </button>
+            <button class="nav-item" data-tab="tab-settings">
+                <i class="fa-solid fa-gears"></i>
+                <span>설정</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- 모달: 일정 추가/수정 -->
+    <div id="modal-event" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-event-title">새 일정 등록</h3>
+                <button class="btn-close" onclick="closeModal('modal-event')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-event">
+                    <input type="hidden" id="event-id">
+                    <div class="form-group">
+                        <label for="event-title">일정명 <span class="required">*</span></label>
+                        <input type="text" id="event-title" class="form-control" placeholder="예: 전문적 학습공동체의 날" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label for="event-date">일자 <span class="required">*</span></label>
+                            <input type="date" id="event-date" class="form-control" required>
+                        </div>
+                        <div class="form-group col-6">
+                            <label for="event-category">분류 <span class="required">*</span></label>
+                            <select id="event-category" class="form-control" required>
+                                <option value="neis">공식 학사일정</option>
+                                <option value="internal" selected>학교 내부일정</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="event-desc">상세 설명</label>
+                        <textarea id="event-desc" class="form-control" rows="3" placeholder="일정 관련 상세 내용이나 회의실, 준비물 등을 적어주세요."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-event')">취소</button>
+                <button type="submit" form="form-event" class="btn btn-primary" id="btn-save-event">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달: 일정 상세 내역 및 관리 -->
+    <div id="modal-detail" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="detail-category-badge">분류</h3>
+                <button class="btn-close" onclick="closeModal('modal-detail')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h2 id="detail-title" class="detail-title">학사일정명</h2>
+                <div class="detail-meta">
+                    <p><i class="fa-regular fa-calendar-days"></i> 날짜: <strong id="detail-date">2026-07-13</strong></p>
+                </div>
+                <div class="detail-desc-box">
+                    <p id="detail-desc">상세 설명이 없습니다.</p>
+                </div>
+            </div>
+            <div class="modal-footer justify-between">
+                <button type="button" class="btn btn-danger admin-only" id="btn-delete-event"><i class="fa-solid fa-trash-can"></i> 삭제</button>
+                <div>
+                    <button type="button" class="btn btn-outline" onclick="closeModal('modal-detail')">닫기</button>
+                    <button type="button" class="btn btn-primary admin-only" id="btn-edit-event-trigger"><i class="fa-solid fa-pen"></i> 수정</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달: 연락처 추가/수정 -->
+    <div id="modal-contact" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-contact-title">교직원 연락처 등록</h3>
+                <button class="btn-close" onclick="closeModal('modal-contact')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-contact">
+                    <input type="hidden" id="contact-id">
+                    <div class="form-group">
+                        <label for="contact-name">성명 <span class="required">*</span></label>
+                        <input type="text" id="contact-name" class="form-control" placeholder="예: 홍길동" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label for="contact-dept">소속/부서 <span class="required">*</span></label>
+                            <input type="text" id="contact-dept" class="form-control" placeholder="예: 교무기획부, 5학년" required>
+                        </div>
+                        <div class="form-group col-6">
+                            <label for="contact-role">직위 <span class="required">*</span></label>
+                            <input type="text" id="contact-role" class="form-control" placeholder="예: 부장교사, 교사, 주무관" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-phone">연락처 <span class="required">*</span></label>
+                        <input type="tel" id="contact-phone" class="form-control" placeholder="예: 010-1234-5678" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-note">비고 (담당 업무 등)</label>
+                        <input type="text" id="contact-note" class="form-control" placeholder="예: 나이스 업무 총괄, 5학년 1반 담임">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-contact')">취소</button>
+                <button type="submit" form="form-contact" class="btn btn-primary" id="btn-save-contact">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Compat 라이브러리 연결 (로컬 file:// 실행 시 CORS 방지) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
