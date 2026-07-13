@@ -11,6 +11,7 @@ let state = {
     events: [],
     contacts: [],
     meals: {},                  // 월별 급식 캐싱 { '2026-07': [...] }
+    isStaffAuthenticated: false,// 교직원 보안 인증 여부
     isAdmin: false,             // 관리자 권한 여부
     dbMode: 'local',            // 'local' 또는 'firebase'
     firebaseConfig: null,       // Firebase 연동 정보
@@ -22,6 +23,7 @@ const NEIS_API_KEY = 'f98ed0c3e5b346c693f8f931a09603fc';
 const NEIS_DEFAULT_SCHOOL = '7621365'; // 향동중학교
 const NEIS_DEFAULT_OFFICE = 'J10';     // 경기도교육청
 const ADMIN_PASSCODE = '023153';       // 관리자 비밀번호
+const STAFF_PASSCODE = '31535372';     // 교직원 보안 인증 코드
 
 // 기본 탑재용 향동중학교 파이어베이스 연동 정보 (하드코딩)
 const DEFAULT_FIREBASE_CONFIG = {
@@ -272,6 +274,68 @@ function updateAdminUI() {
         
         // 화면 전역의 admin-only 클래스 숨김
         document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+    }
+}
+
+// 6.5 교직원 보안 인증 게이트 제어 함수
+function checkSecurityGate() {
+    const isAuth = localStorage.getItem('teacherschedule_staff_authenticated') === 'true';
+    const securityGate = document.getElementById('security-gate');
+    
+    // 만약 이미 교직원 인증이 되었거나 관리자 인증 세션이 있다면 패스
+    if (isAuth || state.isAdmin) {
+        state.isStaffAuthenticated = true;
+        if (securityGate) securityGate.classList.add('fade-out');
+    } else {
+        state.isStaffAuthenticated = false;
+        if (securityGate) securityGate.classList.remove('fade-out');
+    }
+}
+
+function verifySecurityCode() {
+    const inputElement = document.getElementById('security-code-input');
+    const errorMsg = document.getElementById('security-error-msg');
+    
+    if (!inputElement) return;
+    
+    const value = inputElement.value.trim();
+    
+    if (value === STAFF_PASSCODE) {
+        // 교직원 인증 성공
+        state.isStaffAuthenticated = true;
+        localStorage.setItem('teacherschedule_staff_authenticated', 'true');
+        
+        const securityGate = document.getElementById('security-gate');
+        if (securityGate) {
+            securityGate.classList.add('fade-out');
+        }
+        
+        if (errorMsg) errorMsg.classList.add('hidden');
+        inputElement.value = '';
+    } else if (value === ADMIN_PASSCODE) {
+        // 관리자 인증 코드를 입력한 경우 -> 일반 인증 + 관리자 자동 활성화!
+        state.isStaffAuthenticated = true;
+        state.isAdmin = true;
+        localStorage.setItem('teacherschedule_staff_authenticated', 'true');
+        localStorage.setItem('teacherschedule_admin_auth', 'true');
+        
+        const securityGate = document.getElementById('security-gate');
+        if (securityGate) {
+            securityGate.classList.add('fade-out');
+        }
+        
+        updateAdminUI();
+        renderCalendar();
+        renderDayEvents();
+        renderContacts();
+        
+        if (errorMsg) errorMsg.classList.add('hidden');
+        inputElement.value = '';
+    } else {
+        // 잘못된 비밀번호
+        if (errorMsg) errorMsg.classList.remove('hidden');
+        inputElement.value = '';
+        inputElement.focus();
     }
 }
 
@@ -1469,6 +1533,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     updateAdminUI();
     
+    // 교직원 보안 인증 게이트 로드
+    checkSecurityGate();
+    
     // 관리자인 경우 백그라운드에서 나이스 자동 동기화 1회 실행
     if (state.isAdmin) {
         autoSyncNeisBackground();
@@ -1732,5 +1799,20 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('인증 코드가 일치하지 않습니다. 다시 입력해 주세요.');
         }
     });
+    
+    // 보안 인증 확인 버튼 및 엔터키 바인딩
+    const btnVerifySecurity = document.getElementById('btn-verify-security');
+    const securityCodeInput = document.getElementById('security-code-input');
+    
+    if (btnVerifySecurity) {
+        btnVerifySecurity.addEventListener('click', verifySecurityCode);
+    }
+    if (securityCodeInput) {
+        securityCodeInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                verifySecurityCode();
+            }
+        });
+    }
 });
 

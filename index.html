@@ -22,6 +22,29 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- 최초 1회 보안 인증 게이트 (락스크린) -->
+    <div id="security-gate" class="security-gate">
+        <div class="security-card">
+            <div class="security-icon-circle">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h2>교직원 인증이 필요합니다</h2>
+            <p>본 시스템은 외부인의 접근이 제한된 교직원 전용 보안 구역입니다. 배포받으신 교직원 보안 인증 코드를 입력해 주세요.</p>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <input type="password" id="security-code-input" class="form-control text-center" placeholder="보안 인증 코드 입력" autocomplete="off" style="font-size: 16px; letter-spacing: 4px;">
+                <div id="security-error-msg" class="error-msg text-center hidden" style="color: #dc2626; font-size: 12px; margin-top: 8px; font-weight: 500;">
+                    <i class="fa-solid fa-circle-exclamation"></i> 올바른 인증 코드가 아닙니다.
+                </div>
+            </div>
+            
+            <button id="btn-verify-security" class="btn btn-primary btn-block" style="margin-top: 15px;"><i class="fa-solid fa-lock-open"></i> 인증 및 접속하기</button>
+            <div class="text-center" style="font-size: 11px; color: var(--text-secondary); margin-top: 16px;">
+                향동중학교 학사일정 및 연락망 보안 연동 시스템
+            </div>
+        </div>
+    </div>
+
     <div class="app-container">
         <!-- 상단 헤더 -->
         <header class="app-header">
