@@ -172,6 +172,11 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 16px;
+}
+
+.header-with-action .btn {
+    flex-shrink: 0; /* 버튼이 찌그러져 텍스트가 줄바꿈되는 현상 방지 */
 }
 
 /* Cards */
@@ -237,6 +242,7 @@ body {
     border: 1px solid transparent;
     cursor: pointer;
     transition: var(--transition-fast);
+    white-space: nowrap; /* 버튼 텍스트 강제 한 줄 유지 */
 }
 
 .btn-primary {
