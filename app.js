@@ -99,6 +99,35 @@ function sortEventsByDate() {
     }
 }
 
+// 4.6 LocalStorage 기반 날짜별 정렬 헬퍼 (개인 로컬 정렬 적용)
+function getLocalSortedEvents(dateString, eventsToSort) {
+    const localOrders = localStorage.getItem('teacherschedule_local_orders');
+    if (!localOrders) return eventsToSort;
+    
+    try {
+        const parsedOrders = JSON.parse(localOrders);
+        const dateOrder = parsedOrders[dateString];
+        if (!dateOrder || !Array.isArray(dateOrder)) return eventsToSort;
+        
+        // 정렬 순서대로 배치하되, 순서 리스트에 없는 일정이 있다면 뒤에 붙여줍니다.
+        const sorted = [];
+        const remaining = [...eventsToSort];
+        
+        dateOrder.forEach(id => {
+            const index = remaining.findIndex(e => e.id === id);
+            if (index > -1) {
+                sorted.push(remaining[index]);
+                remaining.splice(index, 1);
+            }
+        });
+        
+        return [...sorted, ...remaining];
+    } catch (e) {
+        console.warn('로컬 정렬 데이터 파싱 실패:', e);
+        return eventsToSort;
+    }
+}
+
 // 5. Firebase 동기화 세팅
 function initFirebase(config) {
     try {
@@ -453,8 +482,11 @@ function createDayCell(date, isOtherMonth) {
             ? dayEvents.filter(e => e.category !== 'neis')
             : dayEvents.filter(e => e.category === state.filterCategory);
         
+    // 로컬 사용자 정렬 우선순위 적용
+    const sortedDayEvents = getLocalSortedEvents(dateString, filteredDayEvents);
+
     // 최대 2개의 일정만 띠지(Pill) 형태로 렌더링
-    const visibleEvents = filteredDayEvents.slice(0, 2);
+    const visibleEvents = sortedDayEvents.slice(0, 2);
     visibleEvents.forEach(e => {
         const pill = document.createElement('div');
         pill.className = `calendar-event-pill category-${e.category}`;
@@ -517,7 +549,14 @@ function renderDayEvents() {
         return;
     }
     
-    filteredEvents.forEach(e => {
+    // 로컬 정렬 우선순위 적용
+    const sortedEvents = getLocalSortedEvents(dateString, filteredEvents);
+    
+    sortedEvents.forEach(e => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'day-event-item-drag-wrapper';
+        wrapper.setAttribute('data-id', e.id);
+        
         const item = document.createElement('div');
         item.className = `event-item category-${e.category}`;
         
@@ -544,8 +583,36 @@ function renderDayEvents() {
             showEventDetail(e);
         });
         
-        listContainer.appendChild(item);
+        // 드래그앤드롭 핸들 아이콘 (관리자가 작성한 일정 등을 누구나 드래그 정렬하여 순서 편집 가능하게 배치)
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle';
+        dragHandle.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
+        
+        wrapper.appendChild(item);
+        wrapper.appendChild(dragHandle);
+        listContainer.appendChild(wrapper);
     });
+
+    // SortableJS 바인딩 (터치 스크롤 충돌 방지를 위해 drag-handle 지정)
+    if (typeof Sortable !== 'undefined' && sortedEvents.length > 1) {
+        Sortable.create(listContainer, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            onEnd: () => {
+                const order = Array.from(listContainer.querySelectorAll('.day-event-item-drag-wrapper')).map(el => el.getAttribute('data-id'));
+                const localOrders = localStorage.getItem('teacherschedule_local_orders') 
+                    ? JSON.parse(localStorage.getItem('teacherschedule_local_orders')) 
+                    : {};
+                localOrders[dateString] = order;
+                localStorage.setItem('teacherschedule_local_orders', JSON.stringify(localOrders));
+                
+                // 달력만 리렌더링하여 배지 칩 순서를 실시간 동기화
+                renderCalendar();
+            }
+        });
+    }
 }
 
 function escapeHTML(str) {
@@ -569,6 +636,14 @@ window.closeModal = function(id) {
 function showAddEventModal() {
     document.getElementById('form-event').reset();
     document.getElementById('event-id').value = '';
+    
+    // 신규 등록 시에는 카테고리 선택 영역을 숨김
+    const categoryGroup = document.getElementById('form-group-category');
+    if (categoryGroup) categoryGroup.classList.add('hidden');
+    
+    const categoryInput = document.getElementById('event-category');
+    if (categoryInput) categoryInput.value = 'internal';
+    
     document.getElementById('modal-event-title').innerText = '새 일정 등록';
     document.getElementById('event-date').value = formatDate(state.selectedDate);
     window.openModal('modal-event');
@@ -627,8 +702,25 @@ function showEventDetail(eventObj) {
         document.getElementById('event-id').value = eventObj.id;
         document.getElementById('event-title').value = eventObj.title;
         document.getElementById('event-date').value = eventObj.date;
-        
         document.getElementById('event-desc').value = eventObj.desc || '';
+        
+        // 분류 탭 영역 노출 및 값 갱신 (수정 모달에만 카테고리 탭 표시)
+        const categoryGroup = document.getElementById('form-group-category');
+        if (categoryGroup) categoryGroup.classList.remove('hidden');
+        
+        const currentCategory = eventObj.category || 'internal';
+        const categoryInput = document.getElementById('event-category');
+        if (categoryInput) categoryInput.value = currentCategory;
+        
+        // 탭 버튼 active 클래스 동기화
+        document.querySelectorAll('.category-tab-btn').forEach(btn => {
+            if (btn.getAttribute('data-category') === currentCategory) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
         document.getElementById('modal-event-title').innerText = '일정 수정';
         window.openModal('modal-event');
     };
@@ -644,7 +736,9 @@ document.getElementById('form-event').addEventListener('submit', async (e) => {
     const id = document.getElementById('event-id').value || 'ev-' + Date.now();
     const title = document.getElementById('event-title').value.trim();
     const date = document.getElementById('event-date').value;
-    const category = 'internal'; // 수동 추가 일정은 항상 학교 내부일정(internal)으로 고정
+    
+    // 카테고리 설정 (기본값 internal)
+    const category = document.getElementById('event-category').value || 'internal';
     const desc = document.getElementById('event-desc').value.trim();
     
     if (!title || !date) return;
@@ -1704,6 +1798,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // 일정 수정 모달 내 카테고리 탭 버튼 클릭 이벤트 바인딩
+    const categoryTabBtns = document.querySelectorAll('.category-tab-btn');
+    categoryTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            categoryTabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const category = btn.getAttribute('data-category');
+            const categoryInput = document.getElementById('event-category');
+            if (categoryInput) categoryInput.value = category;
+        });
+    });
     
     // 달력 스와이프
     document.getElementById('btn-prev-month').addEventListener('click', () => {

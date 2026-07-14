@@ -442,6 +442,20 @@
                         <label for="event-desc">상세 설명</label>
                         <textarea id="event-desc" class="form-control" rows="3" placeholder="일정 관련 상세 내용이나 회의실, 준비물 등을 적어주세요."></textarea>
                     </div>
+                    
+                    <!-- 일정 분류 선택 영역 (수정 시에만 JS로 활성화) -->
+                    <div id="form-group-category" class="form-group hidden">
+                        <label>일정 분류</label>
+                        <div class="category-tab-group">
+                            <button type="button" class="category-tab-btn active" data-category="internal">
+                                <span class="dot dot-internal"></span>학교 내부일정
+                            </button>
+                            <button type="button" class="category-tab-btn" data-category="neis">
+                                <span class="dot dot-neis"></span>공식 학사일정
+                            </button>
+                        </div>
+                        <input type="hidden" id="event-category" value="internal">
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -521,6 +535,8 @@
     <!-- Firebase SDK Compat 라이브러리 연결 (로컬 file:// 실행 시 CORS 방지) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <!-- SortableJS 드래그앤드롭 라이브러리 연결 (로컬 정렬용) -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

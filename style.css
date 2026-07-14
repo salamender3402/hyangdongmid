@@ -1160,3 +1160,93 @@ body.dark-mode .contacts-auth-gate .security-card {
     background: rgba(30, 41, 59, 0.9);
     border-color: rgba(255, 255, 255, 0.1);
 }
+
+/* Category Tab Group (Segment Control) */
+.category-tab-group {
+    display: flex;
+    background-color: var(--bg-body);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.category-tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-radius: calc(var(--radius-sm) - 2px);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.category-tab-btn .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.category-tab-btn.active {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+    font-weight: 600;
+}
+
+/* Drag & Drop Layout Styles */
+.day-event-item-drag-wrapper {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.drag-handle {
+    color: var(--text-muted);
+    margin-left: 12px; /* 오른쪽에 배치되므로 간격을 왼쪽에 줌 */
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    padding: 6px;
+    transition: color 0.2s ease;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+    color: var(--text-primary);
+}
+
+.event-item {
+    flex: 1; /* 드래그 핸들이 추가되므로 유연하게 조율 */
+}
+
+/* SortableJS 플레이스홀더 스타일 */
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: var(--color-internal-light) !important;
+    border: 2px dashed var(--color-internal) !important;
+}
+
+.sortable-chosen {
+    box-shadow: var(--shadow-md) !important;
+    transform: scale(1.01);
+}
+
+/* 다크모드 대응 */
+body.dark-mode .category-tab-group {
+    background-color: rgba(15, 23, 42, 0.4);
+}
+body.dark-mode .category-tab-btn.active {
+    background-color: var(--bg-card);
+    color: #fff;
+}
