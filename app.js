@@ -1874,13 +1874,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // 급식 날짜 텍스트 클릭 시 숨겨진 네이티브 데이트피커 변경 리스너
-    const mealDateStr = document.getElementById('meal-date-str');
+    // 급식 날짜 텍스트 옆 달력 아이콘 버튼 클릭 시 숨겨진 네이티브 데이트피커 변경 리스너
+    const btnMealCalendar = document.getElementById('btn-meal-calendar');
     const mealDatePickerInput = document.getElementById('meal-date-picker');
     
-    if (mealDateStr && mealDatePickerInput) {
-        // 날짜 글자를 누르면 숨겨진 datepicker의 showPicker API 기동 (PC/모바일 공용 표준)
-        mealDateStr.addEventListener('click', () => {
+    if (btnMealCalendar && mealDatePickerInput) {
+        // 달력 아이콘 버튼을 누르면 숨겨진 datepicker의 showPicker API 기동 (PC/모바일 공용 표준)
+        btnMealCalendar.addEventListener('click', () => {
             try {
                 mealDatePickerInput.showPicker();
             } catch (err) {
