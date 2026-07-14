@@ -598,6 +598,9 @@ function renderDayEvents() {
         Sortable.create(listContainer, {
             handle: '.drag-handle',
             animation: 150,
+            delay: 100, // 터치 시작 후 100ms 지연 (스크롤과 구분)
+            delayOnTouchOnly: true, // 모바일에서만 딜레이 적용
+            touchStartThreshold: 5, // 5px 이상 움직이기 전까지는 딜레이 유효
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
             onEnd: () => {
