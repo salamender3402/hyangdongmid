@@ -611,8 +611,9 @@ function renderDayEvents() {
                 localOrders[dateString] = order;
                 localStorage.setItem('teacherschedule_local_orders', JSON.stringify(localOrders));
                 
-                // 달력만 리렌더링하여 배지 칩 순서를 실시간 동기화
+                // 달력과 일정 목록을 모두 다시 그려서 데이터-DOM 정렬 상태를 완벽히 동기화
                 renderCalendar();
+                renderDayEvents();
             }
         });
     }
