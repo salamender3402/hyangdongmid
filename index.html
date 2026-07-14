@@ -126,12 +126,14 @@
                 <div class="card meal-card">
                     <div class="meal-header-row">
                         <button id="btn-prev-meal" class="btn-circle"><i class="fa-solid fa-chevron-left"></i></button>
-                        <div class="meal-date-picker-wrapper" style="display: flex; align-items: center; gap: 8px; position: relative;">
+                        <div class="meal-date-picker-wrapper" style="display: flex; align-items: center; gap: 8px;">
                             <h3 id="meal-date-str" style="margin: 0;">--년 --월 --일</h3>
-                            <button id="btn-meal-calendar" class="btn-circle" style="width: 32px; height: 32px; font-size: 13px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); background-color: var(--bg-card); transition: var(--transition-fast);" title="날짜로 급식 찾기">
-                                <i class="fa-regular fa-calendar"></i>
-                            </button>
-                            <input type="date" id="meal-date-picker" style="position: absolute; width: 0; height: 0; visibility: hidden; pointer-events: none; border: none; padding: 0;">
+                            <div style="position: relative; width: 32px; height: 32px;">
+                                <button id="btn-meal-calendar" class="btn-circle" style="width: 32px; height: 32px; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); background-color: var(--bg-card); transition: var(--transition-fast); pointer-events: none;" title="날짜로 급식 찾기">
+                                    <i class="fa-regular fa-calendar"></i>
+                                </button>
+                                <input type="date" id="meal-date-picker" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: none; padding: 0; margin: 0; z-index: 2;">
+                            </div>
                         </div>
                         <button id="btn-next-meal" class="btn-circle"><i class="fa-solid fa-chevron-right"></i></button>
                     </div>

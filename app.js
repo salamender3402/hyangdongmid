@@ -1874,21 +1874,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // 급식 날짜 텍스트 옆 달력 아이콘 버튼 클릭 시 숨겨진 네이티브 데이트피커 변경 리스너
-    const btnMealCalendar = document.getElementById('btn-meal-calendar');
+    // 급식 캘린더 네이티브 데이트피커 변경 감지 리스너
     const mealDatePickerInput = document.getElementById('meal-date-picker');
-    
-    if (btnMealCalendar && mealDatePickerInput) {
-        // 달력 아이콘 버튼을 누르면 숨겨진 datepicker의 showPicker API 기동 (PC/모바일 공용 표준)
-        btnMealCalendar.addEventListener('click', () => {
-            try {
-                mealDatePickerInput.showPicker();
-            } catch (err) {
-                console.warn('showPicker API 미지원 브라우저:', err);
-                mealDatePickerInput.click(); // Fallback
-            }
-        });
-        
+    if (mealDatePickerInput) {
         mealDatePickerInput.addEventListener('change', (e) => {
             if (e.target.value) {
                 // e.target.value는 'yyyy-MM-dd' 문자열이므로 시간대 보정을 위해 new Date(value) 처리
