@@ -1202,50 +1202,46 @@ body.dark-mode .contacts-auth-gate .security-card {
     font-weight: 600;
 }
 
-/* Drag & Drop Layout Styles */
-.day-event-item-drag-wrapper {
+/* Up/Down Arrow Order Layout Styles */
+.day-event-item-order-wrapper {
     display: flex;
     align-items: center;
     width: 100%;
 }
 
-.drag-handle {
-    color: var(--text-muted);
-    margin-left: 12px; /* 오른쪽에 배치되므로 간격을 왼쪽에 줌 */
-    cursor: grab;
+.event-item {
+    flex: 1; /* 순서 버튼 공간 확보를 위해 유연하게 조율 */
+}
+
+.event-order-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-left: 12px;
+}
+
+.btn-order-arrow {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-card);
+    color: var(--text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
-    padding: 6px;
-    transition: color 0.2s ease;
-    
-    /* 모바일 터치 스크롤 충돌 방지 및 텍스트 선택 방지 */
-    touch-action: none;
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
+    font-size: 11px;
+    cursor: pointer;
+    transition: var(--transition-fast);
 }
 
-.drag-handle:active {
-    cursor: grabbing;
-    color: var(--text-primary);
+.btn-order-arrow:active {
+    background-color: var(--border-color);
 }
 
-.event-item {
-    flex: 1; /* 드래그 핸들이 추가되므로 유연하게 조율 */
-}
-
-/* SortableJS 플레이스홀더 스타일 */
-.sortable-ghost {
-    opacity: 0.4;
-    background-color: var(--color-internal-light) !important;
-    border: 2px dashed var(--color-internal) !important;
-}
-
-.sortable-chosen {
-    box-shadow: var(--shadow-md) !important;
-    transform: scale(1.01);
+.btn-order-arrow.hidden {
+    visibility: hidden; /* 레이아웃 유지를 위해 안 보이게만 처리 (공간 확보) */
+    pointer-events: none;
 }
 
 /* 다크모드 대응 */
@@ -1255,4 +1251,12 @@ body.dark-mode .category-tab-group {
 body.dark-mode .category-tab-btn.active {
     background-color: var(--bg-card);
     color: #fff;
+}
+body.dark-mode .btn-order-arrow {
+    background-color: rgba(30, 41, 59, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+}
+body.dark-mode .btn-order-arrow:active {
+    background-color: rgba(255, 255, 255, 0.1);
 }

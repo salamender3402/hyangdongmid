@@ -128,6 +128,31 @@ function getLocalSortedEvents(dateString, eventsToSort) {
     }
 }
 
+// 4.7 LocalStorage 일정 순서 교환 헬퍼 (Up/Down 화살표 기능)
+function changeEventOrder(dateString, sortedEvents, currentIdx, direction) {
+    const targetIdx = currentIdx + direction;
+    if (targetIdx < 0 || targetIdx >= sortedEvents.length) return; // 범위를 벗어나면 무시
+    
+    // 순서 배열 복제
+    const orderIds = sortedEvents.map(e => e.id);
+    
+    // 두 아이템 swap
+    const temp = orderIds[currentIdx];
+    orderIds[currentIdx] = orderIds[targetIdx];
+    orderIds[targetIdx] = temp;
+    
+    // localStorage 저장
+    const localOrders = localStorage.getItem('teacherschedule_local_orders') 
+        ? JSON.parse(localStorage.getItem('teacherschedule_local_orders')) 
+        : {};
+    localOrders[dateString] = orderIds;
+    localStorage.setItem('teacherschedule_local_orders', JSON.stringify(localOrders));
+    
+    // 캘린더와 리스트 리렌더링
+    renderCalendar();
+    renderDayEvents();
+}
+
 // 5. Firebase 동기화 세팅
 function initFirebase(config) {
     try {
@@ -552,9 +577,9 @@ function renderDayEvents() {
     // 로컬 정렬 우선순위 적용
     const sortedEvents = getLocalSortedEvents(dateString, filteredEvents);
     
-    sortedEvents.forEach(e => {
+    sortedEvents.forEach((e, idx) => {
         const wrapper = document.createElement('div');
-        wrapper.className = 'day-event-item-drag-wrapper';
+        wrapper.className = 'day-event-item-order-wrapper';
         wrapper.setAttribute('data-id', e.id);
         
         const item = document.createElement('div');
@@ -583,40 +608,35 @@ function renderDayEvents() {
             showEventDetail(e);
         });
         
-        // 드래그앤드롭 핸들 아이콘 (관리자가 작성한 일정 등을 누구나 드래그 정렬하여 순서 편집 가능하게 배치)
-        const dragHandle = document.createElement('div');
-        dragHandle.className = 'drag-handle';
-        dragHandle.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
+        // 순서 변경 화살표 버튼 추가 (PC/모바일 공통 터치 간섭 0% 우회 시스템)
+        const orderActions = document.createElement('div');
+        orderActions.className = 'event-order-actions';
+        
+        const upBtn = document.createElement('button');
+        upBtn.className = 'btn-order-arrow btn-order-up';
+        if (idx === 0) upBtn.classList.add('hidden');
+        upBtn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+        upBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            changeEventOrder(dateString, sortedEvents, idx, -1);
+        });
+        
+        const downBtn = document.createElement('button');
+        downBtn.className = 'btn-order-arrow btn-order-down';
+        if (idx === sortedEvents.length - 1) downBtn.classList.add('hidden');
+        downBtn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+        downBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            changeEventOrder(dateString, sortedEvents, idx, 1);
+        });
+        
+        orderActions.appendChild(upBtn);
+        orderActions.appendChild(downBtn);
         
         wrapper.appendChild(item);
-        wrapper.appendChild(dragHandle);
+        wrapper.appendChild(orderActions);
         listContainer.appendChild(wrapper);
     });
-
-    // SortableJS 바인딩 (터치 스크롤 충돌 방지를 위해 drag-handle 지정)
-    if (typeof Sortable !== 'undefined' && sortedEvents.length > 1) {
-        Sortable.create(listContainer, {
-            handle: '.drag-handle',
-            animation: 150,
-            delay: 100, // 터치 시작 후 100ms 지연 (스크롤과 구분)
-            delayOnTouchOnly: true, // 모바일에서만 딜레이 적용
-            touchStartThreshold: 5, // 5px 이상 움직이기 전까지는 딜레이 유효
-            ghostClass: 'sortable-ghost',
-            chosenClass: 'sortable-chosen',
-            onEnd: () => {
-                const order = Array.from(listContainer.querySelectorAll('.day-event-item-drag-wrapper')).map(el => el.getAttribute('data-id'));
-                const localOrders = localStorage.getItem('teacherschedule_local_orders') 
-                    ? JSON.parse(localStorage.getItem('teacherschedule_local_orders')) 
-                    : {};
-                localOrders[dateString] = order;
-                localStorage.setItem('teacherschedule_local_orders', JSON.stringify(localOrders));
-                
-                // 달력과 일정 목록을 모두 다시 그려서 데이터-DOM 정렬 상태를 완벽히 동기화
-                renderCalendar();
-                renderDayEvents();
-            }
-        });
-    }
 }
 
 function escapeHTML(str) {
