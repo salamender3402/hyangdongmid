@@ -32,7 +32,7 @@
             <p>본 시스템은 외부인의 접근이 제한된 교직원 전용 보안 구역입니다. 배포받으신 교직원 보안 인증 코드를 입력해 주세요.</p>
             
             <div class="form-group" style="margin-top: 20px;">
-                <input type="password" id="security-code-input" class="form-control text-center" placeholder="보안 인증 코드 입력" autocomplete="off" style="font-size: 16px; letter-spacing: 4px;">
+                <input type="password" id="security-code-input" class="form-control text-center" placeholder="보안 인증 코드 입력" inputmode="numeric" pattern="[0-9]*" autocomplete="off" style="font-size: 16px; letter-spacing: 4px;">
                 <div id="security-error-msg" class="error-msg text-center hidden" style="color: #dc2626; font-size: 12px; margin-top: 8px; font-weight: 500;">
                     <i class="fa-solid fa-circle-exclamation"></i> 올바른 인증 코드가 아닙니다.
                 </div>
@@ -174,7 +174,7 @@
                         </p>
                         
                         <div class="form-group">
-                            <input type="password" id="contacts-pin-input" class="form-control text-center" placeholder="4자리 PIN 입력" maxlength="4" autocomplete="off" style="font-size: 20px; letter-spacing: 8px; font-weight: 700; padding: 10px;">
+                            <input type="password" id="contacts-pin-input" class="form-control text-center" placeholder="4자리 PIN 입력" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" style="font-size: 20px; letter-spacing: 8px; font-weight: 700; padding: 10px;">
                             <div id="contacts-pin-error-msg" class="error-msg text-center hidden" style="color: #dc2626; font-size: 12px; margin-top: 8px; font-weight: 500;">
                                 <i class="fa-solid fa-circle-exclamation"></i> 올바른 PIN 번호가 아닙니다.
                             </div>
