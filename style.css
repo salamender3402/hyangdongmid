@@ -1144,3 +1144,19 @@ body {
     margin-bottom: 24px;
     margin-top: 0;
 }
+
+/* Contacts Auth Gate (2nd PIN Lock) */
+.contacts-auth-gate {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 350px;
+    padding: 10px;
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* 다크모드 대응을 위해 보안 카드가 다크모드 바디 아래에 있을 때 배경색 보정 */
+body.dark-mode .contacts-auth-gate .security-card {
+    background: rgba(30, 41, 59, 0.9);
+    border-color: rgba(255, 255, 255, 0.1);
+}

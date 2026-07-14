@@ -162,25 +162,50 @@
 
             <!-- 탭 콘텐츠: 비상연락망 -->
             <section id="tab-contacts" class="tab-pane">
-                <div class="section-header">
-                    <div class="header-with-action">
-                        <div>
-                            <h2><i class="fa-solid fa-address-book"></i> 교직원 비상연락망</h2>
-                            <p>전체 교직원의 직위, 부서, 연락처를 조회하고 빠르게 통화할 수 있습니다.</p>
+                <!-- 2차 인증 게이트 (PIN 입력 창) -->
+                <div id="contacts-auth-gate" class="contacts-auth-gate">
+                    <div class="security-card text-center" style="max-width: 360px; margin: 40px auto; padding: 30px 20px;">
+                        <div class="security-icon-circle" style="background-color: #fef3c7; color: #d97706; margin: 0 auto 16px;">
+                            <i class="fa-solid fa-key"></i>
                         </div>
-                        <button id="btn-add-contact" class="btn btn-primary admin-only"><i class="fa-solid fa-user-plus"></i> 연락처 등록</button>
+                        <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">비상연락망 2차 보안</h2>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5;">
+                            교직원 개인정보 보호구역입니다.<br>전달받으신 2차 보안 PIN 번호(4자리)를 입력해 주세요.
+                        </p>
+                        
+                        <div class="form-group">
+                            <input type="password" id="contacts-pin-input" class="form-control text-center" placeholder="4자리 PIN 입력" maxlength="4" autocomplete="off" style="font-size: 20px; letter-spacing: 8px; font-weight: 700; padding: 10px;">
+                            <div id="contacts-pin-error-msg" class="error-msg text-center hidden" style="color: #dc2626; font-size: 12px; margin-top: 8px; font-weight: 500;">
+                                <i class="fa-solid fa-circle-exclamation"></i> 올바른 PIN 번호가 아닙니다.
+                            </div>
+                        </div>
+                        
+                        <button id="btn-verify-contacts-pin" class="btn btn-primary btn-block" style="margin-top: 15px;"><i class="fa-solid fa-unlock-keyhole"></i> 연락망 잠금 해제</button>
                     </div>
                 </div>
 
-                <!-- 검색창 -->
-                <div class="search-bar">
-                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                    <input type="text" id="contact-search" placeholder="이름, 부서, 직위, 초성으로 검색 (예: ㄱㅈㄷ)">
-                </div>
+                <!-- 인증 성공 후 노출될 콘텐츠 영역 -->
+                <div id="contacts-content-area" class="hidden">
+                    <div class="section-header">
+                        <div class="header-with-action">
+                            <div>
+                                <h2><i class="fa-solid fa-address-book"></i> 교직원 비상연락망</h2>
+                                <p>직위, 부서 정보를 조회할 수 있습니다. (개인정보 보호를 위해 전화번호 텍스트는 노출되지 않으며, 우측 통화 버튼으로 즉시 연결됩니다.)</p>
+                            </div>
+                            <button id="btn-add-contact" class="btn btn-primary admin-only"><i class="fa-solid fa-user-plus"></i> 연락처 등록</button>
+                        </div>
+                    </div>
 
-                <!-- 연락망 그리드 -->
-                <div id="contacts-grid" class="contacts-grid">
-                    <!-- JS로 카드 동적 렌더링 -->
+                    <!-- 검색창 -->
+                    <div class="search-bar">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="contact-search" placeholder="이름, 부서, 직위, 초성으로 검색 (예: ㄱㅈㄷ)">
+                    </div>
+
+                    <!-- 연락망 그리드 -->
+                    <div id="contacts-grid" class="contacts-grid">
+                        <!-- JS로 카드 동적 렌더링 -->
+                    </div>
                 </div>
             </section>
 

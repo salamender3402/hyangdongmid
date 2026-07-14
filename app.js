@@ -12,6 +12,7 @@ let state = {
     contacts: [],
     meals: {},                  // 월별 급식 캐싱 { '2026-07': [...] }
     isStaffAuthenticated: false,// 교직원 보안 인증 여부
+    isContactsAuthenticated: false, // 비상연락망 2차 보안 인증 여부
     isAdmin: false,             // 관리자 권한 여부
     dbMode: 'local',            // 'local' 또는 'firebase'
     firebaseConfig: null,       // Firebase 연동 정보
@@ -24,6 +25,8 @@ const NEIS_DEFAULT_SCHOOL = '7621365'; // 향동중학교
 const NEIS_DEFAULT_OFFICE = 'J10';     // 경기도교육청
 const ADMIN_PASSCODE = '023153';       // 관리자 비밀번호
 const STAFF_PASSCODE = '31535372';     // 교직원 보안 인증 코드
+const CONTACT_PIN_CODE = '3153';       // 비상연락망 2차 PIN 번호
+
 
 // 기본 탑재용 향동중학교 파이어베이스 연동 정보 (하드코딩)
 const DEFAULT_FIREBASE_CONFIG = {
@@ -333,6 +336,34 @@ function verifySecurityCode() {
         inputElement.value = '';
     } else {
         // 잘못된 비밀번호
+        if (errorMsg) errorMsg.classList.remove('hidden');
+        inputElement.value = '';
+        inputElement.focus();
+    }
+}
+
+// 6.7 비상연락망 2차 PIN 인증 검증 함수
+function verifyContactsPin() {
+    const inputElement = document.getElementById('contacts-pin-input');
+    const errorMsg = document.getElementById('contacts-pin-error-msg');
+    
+    if (!inputElement) return;
+    
+    const value = inputElement.value.trim();
+    
+    if (value === CONTACT_PIN_CODE) {
+        state.isContactsAuthenticated = true;
+        
+        const authGate = document.getElementById('contacts-auth-gate');
+        const contentArea = document.getElementById('contacts-content-area');
+        
+        if (authGate) authGate.classList.add('hidden');
+        if (contentArea) contentArea.classList.remove('hidden');
+        if (errorMsg) errorMsg.classList.add('hidden');
+        
+        inputElement.value = '';
+        renderContacts();
+    } else {
         if (errorMsg) errorMsg.classList.remove('hidden');
         inputElement.value = '';
         inputElement.focus();
@@ -697,8 +728,7 @@ function renderContacts() {
         } else {
             return c.name.toLowerCase().includes(searchVal) || 
                    c.dept.toLowerCase().includes(searchVal) || 
-                   c.role.toLowerCase().includes(searchVal) ||
-                   c.phone.includes(searchVal);
+                   c.role.toLowerCase().includes(searchVal);
         }
     });
     
@@ -717,14 +747,11 @@ function renderContacts() {
                     <span class="badge badge-info">${escapeHTML(c.dept)}</span>
                     <span class="badge">${escapeHTML(c.role)}</span>
                 </div>
-                <div class="contact-phone">
-                    <i class="fa-solid fa-phone"></i> ${escapeHTML(c.phone)}
-                </div>
                 ${c.note ? `<div class="contact-note">비고: ${escapeHTML(c.note)}</div>` : ''}
             </div>
             <div class="contact-actions">
                 ${state.isAdmin ? `<button class="btn-circle" onclick="editContact('${c.id}')"><i class="fa-solid fa-user-pen"></i></button>` : ''}
-                <a href="tel:${c.phone}" class="btn-circle btn-circle-call"><i class="fa-solid fa-phone"></i></a>
+                <a href="tel:${c.phone}" class="btn-circle btn-circle-call" title="전화 걸기"><i class="fa-solid fa-phone"></i></a>
             </div>
         `;
         grid.appendChild(card);
@@ -1592,15 +1619,52 @@ document.addEventListener('DOMContentLoaded', () => {
             state.activeTab = targetTab;
             
             if (targetTab === 'tab-calendar') {
+                // 비상연락망 보안 자동 잠금
+                state.isContactsAuthenticated = false;
                 renderCalendar();
                 renderDayEvents();
             } else if (targetTab === 'tab-contacts') {
-                renderContacts();
-            } else if (targetTab === 'tab-meals') {
-                renderMealInfo();
+                const authGate = document.getElementById('contacts-auth-gate');
+                const contentArea = document.getElementById('contacts-content-area');
+                const errorMsg = document.getElementById('contacts-pin-error-msg');
+                const pinInput = document.getElementById('contacts-pin-input');
+                
+                if (state.isContactsAuthenticated) {
+                    if (authGate) authGate.classList.add('hidden');
+                    if (contentArea) contentArea.classList.remove('hidden');
+                    renderContacts();
+                } else {
+                    if (authGate) authGate.classList.remove('hidden');
+                    if (contentArea) contentArea.classList.add('hidden');
+                    if (errorMsg) errorMsg.classList.add('hidden');
+                    if (pinInput) {
+                        pinInput.value = '';
+                        setTimeout(() => pinInput.focus(), 100);
+                    }
+                }
+            } else {
+                // 달력 외의 다른 탭(급식, 설정)으로 가도 비상연락망 보안 잠금
+                state.isContactsAuthenticated = false;
+                if (targetTab === 'tab-meals') {
+                    renderMealInfo();
+                }
             }
         });
     });
+
+    // 비상연락망 2차 인증 버튼 및 엔터키 이벤트 바인딩
+    const btnVerifyContactsPin = document.getElementById('btn-verify-contacts-pin');
+    if (btnVerifyContactsPin) {
+        btnVerifyContactsPin.addEventListener('click', verifyContactsPin);
+    }
+    const contactsPinInput = document.getElementById('contacts-pin-input');
+    if (contactsPinInput) {
+        contactsPinInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                verifyContactsPin();
+            }
+        });
+    }
     
     // 달력 스와이프
     document.getElementById('btn-prev-month').addEventListener('click', () => {
