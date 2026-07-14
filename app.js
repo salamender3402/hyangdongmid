@@ -6,6 +6,7 @@
 let state = {
     currentDate: new Date(), // 실제 오늘 날짜 기준으로 자동 설정
     selectedDate: new Date(),
+    mealSelectedDate: new Date(), // 급식 조회 전용 오늘 날짜 상태 (달력 날짜 선택과 분리)
     activeTab: 'tab-calendar',
     filterCategory: 'all',
     events: [],
@@ -1461,16 +1462,23 @@ async function renderMealInfo() {
     
     if (!dateStrElement || !contentArea || !caloriesElement || !originElement || !allergyElement) return;
     
-    const year = state.selectedDate.getFullYear();
-    const month = state.selectedDate.getMonth() + 1;
-    const date = state.selectedDate.getDate();
+    if (!state.mealSelectedDate) state.mealSelectedDate = new Date();
+    const year = state.mealSelectedDate.getFullYear();
+    const month = state.mealSelectedDate.getMonth() + 1;
+    const date = state.mealSelectedDate.getDate();
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-    const dayName = dayNames[state.selectedDate.getDay()];
+    const dayName = dayNames[state.mealSelectedDate.getDay()];
     
     dateStrElement.innerText = `${year}년 ${month}월 ${date}일(${dayName})`;
     
     const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-    const targetDateStr = formatDate(state.selectedDate);
+    const targetDateStr = formatDate(state.mealSelectedDate);
+    
+    // 숨겨진 input datepicker 값도 실시간 동기화
+    const mealDatePicker = document.getElementById('meal-date-picker');
+    if (mealDatePicker) {
+        mealDatePicker.value = targetDateStr;
+    }
     
     contentArea.innerHTML = `<div class="text-center" style="width: 100%; padding: 20px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color: var(--color-internal);"></i><p class="text-muted mt-2" style="font-size: 12px;">급식 식단을 불러오고 있습니다...</p></div>`;
     
@@ -1803,6 +1811,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 달력 외의 다른 탭(급식, 설정)으로 가도 비상연락망 보안 잠금
                 state.isContactsAuthenticated = false;
                 if (targetTab === 'tab-meals') {
+                    state.mealSelectedDate = new Date(); // 급식 탭 진입 시 오늘 날짜로 항상 세팅
                     renderMealInfo();
                 }
             }
@@ -1854,14 +1863,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnNextMeal = document.getElementById('btn-next-meal');
     if (btnPrevMeal && btnNextMeal) {
         btnPrevMeal.addEventListener('click', () => {
-            state.selectedDate.setDate(state.selectedDate.getDate() - 1);
-            state.currentDate = new Date(state.selectedDate);
+            if (!state.mealSelectedDate) state.mealSelectedDate = new Date();
+            state.mealSelectedDate.setDate(state.mealSelectedDate.getDate() - 1);
             renderMealInfo();
         });
         btnNextMeal.addEventListener('click', () => {
-            state.selectedDate.setDate(state.selectedDate.getDate() + 1);
-            state.currentDate = new Date(state.selectedDate);
+            if (!state.mealSelectedDate) state.mealSelectedDate = new Date();
+            state.mealSelectedDate.setDate(state.mealSelectedDate.getDate() + 1);
             renderMealInfo();
+        });
+    }
+    
+    // 급식 날짜 텍스트 클릭 시 숨겨진 네이티브 데이트피커 변경 리스너
+    const mealDateStr = document.getElementById('meal-date-str');
+    const mealDatePickerInput = document.getElementById('meal-date-picker');
+    
+    if (mealDateStr && mealDatePickerInput) {
+        // 날짜 글자를 누르면 숨겨진 datepicker의 showPicker API 기동 (PC/모바일 공용 표준)
+        mealDateStr.addEventListener('click', () => {
+            try {
+                mealDatePickerInput.showPicker();
+            } catch (err) {
+                console.warn('showPicker API 미지원 브라우저:', err);
+                mealDatePickerInput.click(); // Fallback
+            }
+        });
+        
+        mealDatePickerInput.addEventListener('change', (e) => {
+            if (e.target.value) {
+                // e.target.value는 'yyyy-MM-dd' 문자열이므로 시간대 보정을 위해 new Date(value) 처리
+                state.mealSelectedDate = new Date(e.target.value);
+                renderMealInfo();
+            }
         });
     }
     

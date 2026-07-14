@@ -126,7 +126,10 @@
                 <div class="card meal-card">
                     <div class="meal-header-row">
                         <button id="btn-prev-meal" class="btn-circle"><i class="fa-solid fa-chevron-left"></i></button>
-                        <h3 id="meal-date-str">--년 --월 --일</h3>
+                        <div class="meal-date-picker-wrapper" style="position: relative; display: inline-block;">
+                            <h3 id="meal-date-str" style="cursor: pointer; display: flex; align-items: center; gap: 6px; margin: 0;">--년 --월 --일 <i class="fa-regular fa-calendar" style="font-size: 14px; color: var(--text-muted); margin-left: 2px;"></i></h3>
+                            <input type="date" id="meal-date-picker" style="position: absolute; width: 0; height: 0; visibility: hidden; pointer-events: none; border: none; padding: 0;">
+                        </div>
                         <button id="btn-next-meal" class="btn-circle"><i class="fa-solid fa-chevron-right"></i></button>
                     </div>
                     <div class="card-body">
