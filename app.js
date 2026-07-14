@@ -1497,18 +1497,57 @@ function setupPwa() {
     const pwaStatus = document.getElementById('pwa-status');
     const swStatus = document.getElementById('sw-status');
     
-    if ('serviceWorker' in navigator) {
+    // 개발 편의를 위해 로컬 접속(localhost / 127.0.0.1) 시에는 서비스 워커 캐싱을 작동하지 않도록 설정합니다.
+    const isLocalhost = Boolean(
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '[::1]' ||
+        window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
+    );
+
+    if ('serviceWorker' in navigator && !isLocalhost) {
         navigator.serviceWorker.register('service-worker.js')
             .then(reg => {
                 console.log('Service Worker 등록 성공:', reg.scope);
                 if (swStatus) swStatus.innerText = '활성화됨 (오프라인 모드 작동)';
+
+                // 백그라운드에서 신규 업데이트 파일(디자인, 코드 등) 감지 리스너
+                reg.onupdatefound = () => {
+                    const installingWorker = reg.installing;
+                    if (installingWorker == null) return;
+
+                    installingWorker.onstatechange = () => {
+                        if (installingWorker.state === 'installed') {
+                            if (navigator.serviceWorker.controller) {
+                                // 기존 브라우저/스마트폰 앱에 구버전 컨트롤러가 살아있는 경우 -> 자가 업데이트 시작
+                                console.log('[PWA Update] 새로운 버전의 자산이 백그라운드에 다운로드되었습니다.');
+                                
+                                // 대기 중인 새 서비스 워커에 즉각 활성화 신호 전송
+                                if (reg.waiting) {
+                                    reg.waiting.postMessage({ action: 'skipWaiting' });
+                                }
+                            }
+                        }
+                    };
+                };
             })
             .catch(err => {
                 console.warn('Service Worker 등록 실패:', err);
                 if (swStatus) swStatus.innerText = '등록 실패 (HTTPS 환경 필요)';
             });
+
+        // 서비스 워커 제어권이 최종 변경(새 버전이 강제 활성화)되는 시점에 브라우저/앱 화면 새로고침
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            console.log('[PWA Update] 새로운 서비스 워커 활성화 감지. 화면을 최신 코드로 새로고침합니다.');
+            window.location.reload();
+        });
+
     } else {
-        if (swStatus) swStatus.innerText = '미지원 브라우저';
+        if (swStatus) {
+            swStatus.innerText = isLocalhost ? '개발자 로컬 모드 (캐싱 우회)' : '미지원 브라우저';
+        }
     }
 
     window.addEventListener('beforeinstallprompt', (e) => {
