@@ -15,6 +15,7 @@ let state = {
     isStaffAuthenticated: false,// 교직원 보안 인증 여부
     isContactsAuthenticated: false, // 비상연락망 2차 보안 인증 여부
     isAdmin: false,             // 관리자 권한 여부
+    isSyncing: false,           // 대량 파이어베이스 동기화 중 실시간 리스너 무한 루프 방지용 락 플래그
     dbMode: 'local',            // 'local' 또는 'firebase'
     firebaseConfig: null,       // Firebase 연동 정보
     deferredPrompt: null        // PWA 설치 프롬프트 보관용
@@ -169,6 +170,7 @@ function initFirebase(config) {
         
         // A. 일정(schedules) 컬렉션 실시간 구독
         unsubscribeEvents = db.collection('schedules').onSnapshot((snapshot) => {
+            if (state.isSyncing) return; // 동기화 중에는 실시간 리스너 무시 (Snapshot Storm 방지)
             let remoteEvents = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
@@ -181,13 +183,23 @@ function initFirebase(config) {
             // 만약 Firestore가 완전히 비어 있고 관리자 권한 상태라면, 로컬 데이터를 마이그레이션(업로드)
             if (remoteEvents.length === 0 && state.isAdmin && state.events.length > 0) {
                 console.log('Firestore 비어 있음. 로컬 일정 마이그레이션 중...');
-                state.events.forEach(async (ev) => {
-                    await db.collection('schedules').doc(ev.id).set({
+                state.isSyncing = true;
+                const batch = db.batch();
+                state.events.forEach((ev) => {
+                    const docRef = db.collection('schedules').doc(ev.id);
+                    batch.set(docRef, {
                         title: ev.title,
                         date: ev.date,
                         category: ev.category,
                         desc: ev.desc || ''
                     });
+                });
+                batch.commit().then(() => {
+                    console.log('로컬 일정 일괄 마이그레이션 성공.');
+                    state.isSyncing = false;
+                }).catch(err => {
+                    console.error('로컬 일정 마이그레이션 실패:', err);
+                    state.isSyncing = false;
                 });
             } else {
                 state.events = remoteEvents;
@@ -202,6 +214,7 @@ function initFirebase(config) {
 
         // B. 연락처(contacts) 컬렉션 실시간 구독
         unsubscribeContacts = db.collection('contacts').onSnapshot((snapshot) => {
+            if (state.isSyncing) return; // 동기화 중에는 실시간 리스너 무시 (Snapshot Storm 방지)
             let remoteContacts = [];
             snapshot.forEach(doc => {
                 remoteContacts.push({ id: doc.id, ...doc.data() });
@@ -210,14 +223,24 @@ function initFirebase(config) {
             // 만약 Firestore 연락망이 완전히 비어 있고 관리자 권한 상태라면 로컬 연락망 업로드
             if (remoteContacts.length === 0 && state.isAdmin && state.contacts.length > 0) {
                 console.log('Firestore 연락망 비어 있음. 로컬 연락망 마이그레이션 중...');
-                state.contacts.forEach(async (c) => {
-                    await db.collection('contacts').doc(c.id).set({
+                state.isSyncing = true;
+                const batch = db.batch();
+                state.contacts.forEach((c) => {
+                    const docRef = db.collection('contacts').doc(c.id);
+                    batch.set(docRef, {
                         name: c.name,
                         dept: c.dept,
                         role: c.role,
                         phone: c.phone,
                         note: c.note || ''
                     });
+                });
+                batch.commit().then(() => {
+                    console.log('로컬 연락망 일괄 마이그레이션 성공.');
+                    state.isSyncing = false;
+                }).catch(err => {
+                    console.error('로컬 연락망 마이그레이션 실패:', err);
+                    state.isSyncing = false;
                 });
             } else {
                 state.contacts = remoteContacts;
@@ -955,6 +978,13 @@ async function syncNeisData() {
             const rows = result.SchoolSchedule[1].row;
             let importCount = 0;
             
+            const useBatch = (state.dbMode === 'firebase' && db);
+            let batch = null;
+            if (useBatch) {
+                state.isSyncing = true;
+                batch = db.batch();
+            }
+            
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
                 const rawDate = row.AA_YMD; // YYYYMMDD
@@ -966,8 +996,9 @@ async function syncNeisData() {
                 if (!exists) {
                     const newId = 'ev-neis-' + Date.now() + '-' + i;
                     
-                    if (state.dbMode === 'firebase' && db) {
-                        await db.collection('schedules').doc(newId).set({
+                    if (useBatch) {
+                        const docRef = db.collection('schedules').doc(newId);
+                        batch.set(docRef, {
                             title,
                             date: formattedDate,
                             category: 'neis',
@@ -984,6 +1015,13 @@ async function syncNeisData() {
                     }
                     importCount++;
                 }
+            }
+            
+            if (useBatch && importCount > 0) {
+                await batch.commit();
+                state.isSyncing = false;
+            } else if (useBatch) {
+                state.isSyncing = false;
             }
             
             if (state.dbMode !== 'firebase') {
@@ -1023,18 +1061,33 @@ async function simulateNeisSync(year) {
     ];
     
     let imported = 0;
+    const useBatch = (state.dbMode === 'firebase' && db);
+    let batch = null;
+    if (useBatch) {
+        state.isSyncing = true;
+        batch = db.batch();
+    }
+    
     for (let i = 0; i < simEvents.length; i++) {
         const se = simEvents[i];
         const exists = state.events.some(e => e.date === se.date && e.title === se.title);
         if (!exists) {
             const newId = 'ev-sim-' + Date.now() + '-' + i;
-            if (state.dbMode === 'firebase' && db) {
-                await db.collection('schedules').doc(newId).set(se);
+            if (useBatch) {
+                const docRef = db.collection('schedules').doc(newId);
+                batch.set(docRef, se);
             } else {
                 state.events.push({ id: newId, ...se });
             }
             imported++;
         }
+    }
+    
+    if (useBatch && imported > 0) {
+        await batch.commit();
+        state.isSyncing = false;
+    } else if (useBatch) {
+        state.isSyncing = false;
     }
     
     if (state.dbMode !== 'firebase') {
@@ -1069,6 +1122,13 @@ async function autoSyncNeisBackground() {
             const rows = result.SchoolSchedule[1].row;
             let importCount = 0;
             
+            const useBatch = (state.dbMode === 'firebase' && db);
+            let batch = null;
+            if (useBatch) {
+                state.isSyncing = true;
+                batch = db.batch();
+            }
+            
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
                 const rawDate = row.AA_YMD; // YYYYMMDD
@@ -1079,14 +1139,23 @@ async function autoSyncNeisBackground() {
                 const exists = state.events.some(e => e.date === formattedDate && e.title === title);
                 if (!exists) {
                     const newId = 'ev-neis-' + Date.now() + '-' + i;
-                    if (state.dbMode === 'firebase' && db) {
-                        await db.collection('schedules').doc(newId).set({ title, date: formattedDate, category: 'neis', desc });
+                    if (useBatch) {
+                        const docRef = db.collection('schedules').doc(newId);
+                        batch.set(docRef, { title, date: formattedDate, category: 'neis', desc });
                     } else {
                         state.events.push({ id: newId, title, date: formattedDate, category: 'neis', desc });
                     }
                     importCount++;
                 }
             }
+            
+            if (useBatch && importCount > 0) {
+                await batch.commit();
+                state.isSyncing = false;
+            } else if (useBatch) {
+                state.isSyncing = false;
+            }
+            
             if (state.dbMode !== 'firebase') {
                 sortEventsByDate();
                 localStorage.setItem('teacherschedule_events', JSON.stringify(state.events));
@@ -1116,18 +1185,33 @@ async function autoSyncNeisMockSilent(year) {
     ];
     
     let imported = 0;
+    const useBatch = (state.dbMode === 'firebase' && db);
+    let batch = null;
+    if (useBatch) {
+        state.isSyncing = true;
+        batch = db.batch();
+    }
+    
     for (let i = 0; i < simEvents.length; i++) {
         const se = simEvents[i];
         const exists = state.events.some(e => e.date === se.date && e.title === se.title);
         if (!exists) {
             const newId = 'ev-sim-' + Date.now() + '-' + i;
-            if (state.dbMode === 'firebase' && db) {
-                await db.collection('schedules').doc(newId).set(se);
+            if (useBatch) {
+                const docRef = db.collection('schedules').doc(newId);
+                batch.set(docRef, se);
             } else {
                 state.events.push({ id: newId, ...se });
             }
             imported++;
         }
+    }
+    
+    if (useBatch && imported > 0) {
+        await batch.commit();
+        state.isSyncing = false;
+    } else if (useBatch) {
+        state.isSyncing = false;
     }
     if (state.dbMode !== 'firebase') {
         sortEventsByDate();
@@ -1325,12 +1409,21 @@ async function syncGoogleSheets(gsheetUrl) {
         }
         
         if (confirm('구글 스프레드시트 일정 데이터로 기존 학사일정(수동 등록분)을 모두 덮어쓰시겠습니까?\n(나이스 공식 일정은 유지되고 수동 및 이전 시트 일정만 덮어써집니다.)')) {
+            const useBatch = (state.dbMode === 'firebase' && db);
+            let batch = null;
+            if (useBatch) {
+                state.isSyncing = true;
+                batch = db.batch();
+            }
+
             // A. 기존 수동 일정 싹 지우기 (나이스 일정 제외)
-            if (state.dbMode === 'firebase' && db) {
-                const deletePromises = state.events
+            if (useBatch) {
+                state.events
                     .filter(ev => ev.category !== 'neis')
-                    .map(ev => db.collection('schedules').doc(ev.id).delete());
-                await Promise.all(deletePromises);
+                    .forEach(ev => {
+                        const docRef = db.collection('schedules').doc(ev.id);
+                        batch.delete(docRef);
+                    });
             } else {
                 state.events = state.events.filter(ev => ev.category === 'neis');
             }
@@ -1356,13 +1449,19 @@ async function syncGoogleSheets(gsheetUrl) {
                     
                     const newId = 'ev-gsheet-' + Date.now() + '-' + i;
                     
-                    if (state.dbMode === 'firebase' && db) {
-                        await db.collection('schedules').doc(newId).set({ title, date, category, desc });
+                    if (useBatch) {
+                        const docRef = db.collection('schedules').doc(newId);
+                        batch.set(docRef, { title, date, category, desc });
                     } else {
                         state.events.push({ id: newId, title, date, category, desc });
                     }
                     importCount++;
                 }
+            }
+
+            if (useBatch) {
+                await batch.commit();
+                state.isSyncing = false;
             }
             
             if (state.dbMode !== 'firebase') {
@@ -1551,16 +1650,20 @@ function importBackupData(file) {
             if (data.events && data.contacts) {
                 if (state.dbMode === 'firebase' && db) {
                     if (confirm('클라우드 서버에 백업 데이터를 업로드하여 동기화하시겠습니까? 기존 서버 데이터는 유지되며 추가 병합됩니다.')) {
-                        data.events.forEach(async (ev) => {
-                            await db.collection('schedules').doc(ev.id).set({
+                        state.isSyncing = true;
+                        const batch = db.batch();
+                        data.events.forEach((ev) => {
+                            const docRef = db.collection('schedules').doc(ev.id);
+                            batch.set(docRef, {
                                 title: ev.title,
                                 date: ev.date,
                                 category: ev.category,
                                 desc: ev.desc || ''
                             });
                         });
-                        data.contacts.forEach(async (c) => {
-                            await db.collection('contacts').doc(c.id).set({
+                        data.contacts.forEach((c) => {
+                            const docRef = db.collection('contacts').doc(c.id);
+                            batch.set(docRef, {
                                 name: c.name,
                                 dept: c.dept,
                                 role: c.role,
@@ -1568,6 +1671,8 @@ function importBackupData(file) {
                                 note: c.note || ''
                             });
                         });
+                        await batch.commit();
+                        state.isSyncing = false;
                         alert('서버에 전체 백업 데이터 병합 완료!');
                     }
                 } else {
@@ -1590,15 +1695,21 @@ function importBackupData(file) {
     reader.readAsText(file);
 }
 
-function resetAllData() {
+async function resetAllData() {
     if (confirm('⚠️ 모든 데이터를 공장 초기화하시겠습니까?\n로컬 및 연결된 클라우드 DB의 모든 정보가 데모 상태로 초기화됩니다.')) {
         if (state.dbMode === 'firebase' && db) {
-            state.events.forEach(async ev => {
-                await db.collection('schedules').doc(ev.id).delete();
+            state.isSyncing = true;
+            const batch = db.batch();
+            state.events.forEach(ev => {
+                const docRef = db.collection('schedules').doc(ev.id);
+                batch.delete(docRef);
             });
-            state.contacts.forEach(async c => {
-                await db.collection('contacts').doc(c.id).delete();
+            state.contacts.forEach(c => {
+                const docRef = db.collection('contacts').doc(c.id);
+                batch.delete(docRef);
             });
+            await batch.commit();
+            state.isSyncing = false;
         }
         
         localStorage.removeItem('teacherschedule_events');
