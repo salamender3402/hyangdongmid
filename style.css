@@ -935,8 +935,9 @@ body {
     height: 72px;
     background-color: rgba(255, 255, 255, 0.95);
     border-top: 1px solid var(--border-color);
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     z-index: 100;
@@ -944,6 +945,7 @@ body {
 }
 
 .nav-item {
+    flex: 1;
     background: none;
     border: none;
     display: flex;
@@ -1307,4 +1309,47 @@ body.dark-mode .notice-banner-header {
 }
 body.dark-mode .notice-banner-content {
     color: #e0f2fe;
+}
+
+.nav-item.admin-only-tab.hidden {
+    display: none !important;
+}
+
+/* 누적 공지사항 게시판 전용 스타일 */
+.notice-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-fast);
+}
+.notice-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.notice-card-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-primary);
+}
+.notice-card-date {
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+.notice-card-body {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+.notice-card-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border-color);
 }

@@ -19,7 +19,8 @@ let state = {
     dbMode: 'local',            // 'local' 또는 'firebase'
     firebaseConfig: null,       // Firebase 연동 정보
     deferredPrompt: null,       // PWA 설치 프롬프트 보관용
-    notice: { text: '', active: true } // 학사일정 공지사항 & 개선사항 관리
+    notice: { text: '', active: true }, // 학사일정 공지사항 & 개선사항 관리
+    notices: []                 // 누적 공지사항 게시판 목록
 };
 
 // 나이스 공식 API 설정 (향동중학교 고정)
@@ -95,6 +96,14 @@ function loadLocalStorageData() {
         if (localNotice) state.notice = JSON.parse(localNotice);
     } catch (e) {
         console.warn('Failed to parse local notice:', e);
+    }
+    
+    try {
+        const localNotices = localStorage.getItem('teacherschedule_notices');
+        state.notices = localNotices ? JSON.parse(localNotices) : [];
+    } catch (e) {
+        console.warn('Failed to parse local notices:', e);
+        state.notices = [];
     }
     
     sortEventsByDate();
@@ -269,6 +278,17 @@ function initFirebase(config) {
             }
         });
 
+        // D. 누적 공지사항 게시판(notices) 실시간 구독
+        db.collection('notices').orderBy('date', 'desc').onSnapshot((snapshot) => {
+            let remoteNotices = [];
+            snapshot.forEach(doc => {
+                remoteNotices.push({ id: doc.id, ...doc.data() });
+            });
+            state.notices = remoteNotices;
+            localStorage.setItem('teacherschedule_notices', JSON.stringify(state.notices));
+            renderNoticeBoard();
+        });
+
         // DB 연동 상태 배지 변경
         const badgeDb = document.getElementById('badge-db-status');
         if (badgeDb) {
@@ -280,6 +300,18 @@ function initFirebase(config) {
         const btnSaveNotice = document.getElementById('btn-save-notice');
         if (btnSaveNotice) {
             btnSaveNotice.addEventListener('click', saveNotice);
+        }
+    
+        // 신규 누적 공지 작성 버튼 (모달 호출)
+        const btnAddNoticeQuick = document.getElementById('btn-add-notice-quick');
+        if (btnAddNoticeQuick) {
+            btnAddNoticeQuick.addEventListener('click', showAddNoticeModal);
+        }
+    
+        // 공지 모달 저장 버튼
+        const btnSaveNoticeModal = document.getElementById('btn-save-notice-modal');
+        if (btnSaveNoticeModal) {
+            btnSaveNoticeModal.addEventListener('click', saveNoticeFromModal);
         }
         
         // 설정 폼 버튼 갱신 및 해제 버튼 노출
@@ -364,6 +396,7 @@ function updateAdminUI() {
         
         // 화면 전역의 admin-only 클래스 표시
         document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+        document.querySelectorAll('.admin-only-tab').forEach(el => el.classList.remove('hidden'));
     } else {
         // 교사(일반 사용자) 모드
         if (adminBadge) {
@@ -379,6 +412,14 @@ function updateAdminUI() {
         
         // 화면 전역의 admin-only 클래스 숨김
         document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.admin-only-tab').forEach(el => el.classList.add('hidden'));
+
+        // 현재 활성화된 탭이 비상연락망(tab-contacts)이었다면 달력(tab-calendar) 탭으로 자동 이탈
+        const activeNav = document.querySelector('.nav-item.active');
+        if (activeNav && activeNav.getAttribute('data-tab') === 'tab-contacts') {
+            const calendarNav = document.querySelector('.nav-item[data-tab="tab-calendar"]');
+            if (calendarNav) calendarNav.click();
+        }
     }
 }
 
@@ -766,6 +807,134 @@ async function saveNotice() {
     } else {
         alert('로컬에 공지사항이 저장되었습니다.');
     }
+}
+
+// 누적 공지사항 게시판 렌더링
+function renderNoticeBoard() {
+    const listContainer = document.getElementById('notice-board-list');
+    if (!listContainer) return;
+
+    if (!Array.isArray(state.notices) || state.notices.length === 0) {
+        listContainer.innerHTML = `<div class="no-events"><i class="fa-solid fa-bullhorn" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>등록된 공지사항이 없습니다.</div>`;
+        return;
+    }
+
+    listContainer.innerHTML = '';
+    state.notices.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'notice-card';
+
+        const titleHtml = escapeHTML(item.title);
+        const contentHtml = linkify(item.content || '');
+        const dateHtml = escapeHTML(item.date || '');
+
+        let adminActions = '';
+        if (state.isAdmin) {
+            adminActions = `
+                <div class="notice-card-actions">
+                    <button class="btn btn-outline btn-sm btn-edit-notice" data-id="${item.id}"><i class="fa-solid fa-pen"></i> 수정</button>
+                    <button class="btn btn-danger btn-sm btn-delete-notice" data-id="${item.id}"><i class="fa-solid fa-trash-can"></i> 삭제</button>
+                </div>
+            `;
+        }
+
+        card.innerHTML = `
+            <div class="notice-card-header">
+                <span class="notice-card-title">${titleHtml}</span>
+                <span class="notice-card-date">${dateHtml}</span>
+            </div>
+            <div class="notice-card-body">${contentHtml}</div>
+            ${adminActions}
+        `;
+
+        listContainer.appendChild(card);
+    });
+
+    // 관리자 수정/삭제 버튼 이벤트 바인딩
+    if (state.isAdmin) {
+        listContainer.querySelectorAll('.btn-edit-notice').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                const target = state.notices.find(n => n.id === id);
+                if (target) showEditNoticeModal(target);
+            });
+        });
+        listContainer.querySelectorAll('.btn-delete-notice').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                if (confirm('이 공지사항을 삭제하시겠습니까?')) {
+                    if (state.dbMode === 'firebase' && db) {
+                        await db.collection('notices').doc(id).delete();
+                    } else {
+                        state.notices = state.notices.filter(n => n.id !== id);
+                        localStorage.setItem('teacherschedule_notices', JSON.stringify(state.notices));
+                        renderNoticeBoard();
+                    }
+                }
+            });
+        });
+    }
+}
+
+// 공지사항 모달 오픈 (신규/수정)
+function showAddNoticeModal() {
+    document.getElementById('form-notice').reset();
+    document.getElementById('notice-id').value = '';
+    document.getElementById('modal-notice-title').innerText = '공지사항 작성';
+    window.openModal('modal-notice');
+}
+
+function showEditNoticeModal(noticeObj) {
+    document.getElementById('notice-id').value = noticeObj.id;
+    document.getElementById('notice-board-title').value = noticeObj.title || '';
+    document.getElementById('notice-board-content').value = noticeObj.content || '';
+    document.getElementById('modal-notice-title').innerText = '공지사항 수정';
+    window.openModal('modal-notice');
+}
+
+// 공지사항 모달 저장
+async function saveNoticeFromModal() {
+    const id = document.getElementById('notice-id').value;
+    const title = document.getElementById('notice-board-title').value.trim();
+    const content = document.getElementById('notice-board-content').value.trim();
+
+    if (!title || !content) {
+        alert('제목과 내용을 모두 입력해 주세요.');
+        return;
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const noticeObj = {
+        title,
+        content,
+        date: todayStr,
+        updatedAt: new Date().toISOString()
+    };
+
+    if (id) {
+        // 수정
+        if (state.dbMode === 'firebase' && db) {
+            await db.collection('notices').doc(id).set(noticeObj);
+        } else {
+            const idx = state.notices.findIndex(n => n.id === id);
+            if (idx > -1) state.notices[idx] = { id, ...noticeObj };
+        }
+    } else {
+        // 신규 작성
+        const newId = 'notice-' + Date.now();
+        if (state.dbMode === 'firebase' && db) {
+            await db.collection('notices').doc(newId).set(noticeObj);
+        } else {
+            state.notices.unshift({ id: newId, ...noticeObj });
+        }
+    }
+
+    if (state.dbMode !== 'firebase') {
+        localStorage.setItem('teacherschedule_notices', JSON.stringify(state.notices));
+        renderNoticeBoard();
+    }
+
+    window.closeModal('modal-notice');
 }
 
 // 9. 모달 오픈 제어
@@ -1970,6 +2139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderContacts();
     renderNotice();
     syncNoticeForm();
+    renderNoticeBoard();
     
     // 상단 날짜 동기화
     const statusDate = document.getElementById('status-date');

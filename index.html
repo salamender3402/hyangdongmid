@@ -432,6 +432,26 @@
                     </div>
                 </div>
             </section>
+
+            <!-- 탭 콘텐츠: 누적 공지사항 게시판 화면 -->
+            <section id="tab-notice" class="tab-pane">
+                <div class="calendar-header">
+                    <div class="calendar-nav">
+                        <h2><i class="fa-solid fa-bullhorn" style="color: var(--color-primary); margin-right: 8px;"></i> 공지사항 &amp; 개선안내</h2>
+                    </div>
+                    <div class="calendar-actions">
+                        <button id="btn-add-notice-quick" class="btn btn-primary admin-only"><i class="fa-solid fa-plus"></i> 공지 작성</button>
+                    </div>
+                </div>
+
+                <div class="info-box mb-3">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <p>학사일정 관련 소식 및 업데이트 개선사항 안내 목록입니다. 인터넷 주소(URL) 터치 시 해당 웹사이트로 이동합니다.</p>
+                </div>
+
+                <!-- 누적 공지사항 리스트 컨테이너 -->
+                <div id="notice-board-list" class="notice-board-list"></div>
+            </section>
         </main>
 
         <!-- 하단 탭 바 내비게이션 -->
@@ -440,14 +460,17 @@
                 <i class="fa-solid fa-calendar-days"></i>
                 <span>달력</span>
             </button>
-
-            <button class="nav-item" data-tab="tab-contacts">
+            <button class="nav-item admin-only-tab hidden" data-tab="tab-contacts">
                 <i class="fa-solid fa-address-book"></i>
                 <span>비상연락망</span>
             </button>
             <button class="nav-item" data-tab="tab-meals">
                 <i class="fa-solid fa-utensils"></i>
                 <span>급식 정보</span>
+            </button>
+            <button class="nav-item" data-tab="tab-notice">
+                <i class="fa-solid fa-bullhorn"></i>
+                <span>공지사항</span>
             </button>
             <button class="nav-item" data-tab="tab-settings">
                 <i class="fa-solid fa-gears"></i>
@@ -564,6 +587,33 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modal-contact')">취소</button>
                 <button type="submit" form="form-contact" class="btn btn-primary" id="btn-save-contact">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달: 공지사항 작성/수정 (관리자 전용) -->
+    <div id="modal-notice" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-notice-title">공지사항 작성</h3>
+                <button class="btn-close" onclick="closeModal('modal-notice')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-notice">
+                    <input type="hidden" id="notice-id">
+                    <div class="form-group">
+                        <label for="notice-board-title">공지 제목 <span class="required">*</span></label>
+                        <input type="text" id="notice-board-title" class="form-control" placeholder="예: [안내] 2학기 시간표 및 신규 학사일정 안내" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="notice-board-content">공지 및 개선사항 내용 <span class="required">*</span></label>
+                        <textarea id="notice-board-content" class="form-control" rows="5" placeholder="상세 내용을 입력하세요. 인터넷 주소(URL) 입력 시 하이퍼링크로 자동 변환됩니다." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-notice')">취소</button>
+                <button type="button" id="btn-save-notice-modal" class="btn btn-primary">저장 및 배포</button>
             </div>
         </div>
     </div>
