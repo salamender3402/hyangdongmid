@@ -375,26 +375,6 @@
                     </div>
                 </div>
 
-                <!-- 2.8 학사일정 공지사항 & 개선사항 관리 카드 (관리자 전용) -->
-                <div class="card mt-4 admin-only">
-                    <div class="card-header">
-                        <h3><i class="fa-solid fa-bullhorn"></i> 공지사항 &amp; 개선사항 관리</h3>
-                        <span id="badge-notice-status" class="badge">설정 가능</span>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">선생님들께 안내할 공지사항이나 앱 업데이트/개선사항을 등록하세요. 웹 주소(URL) 입력 시 하이퍼링크로 자동 변환됩니다.</p>
-                        <div class="form-group">
-                            <label for="notice-text">공지사항 및 개선사항 내용</label>
-                            <textarea id="notice-text" class="form-control" rows="3" placeholder="예: [안내] 2학기 시간표 변경 및 신규 학사일정이 업데이트되었습니다. http://..."></textarea>
-                        </div>
-                        <div class="form-group flex items-center gap-2 mt-2">
-                            <input type="checkbox" id="notice-active" checked style="width: 18px; height: 18px; cursor: pointer;">
-                            <label for="notice-active" style="margin-bottom: 0; cursor: pointer; font-weight: 500;">메인 화면 상단에 공지사항 배너 표시하기</label>
-                        </div>
-                        <button id="btn-save-notice" class="btn btn-primary btn-block mt-3"><i class="fa-solid fa-floppy-disk"></i> 공지사항 저장 및 배포</button>
-                    </div>
-                </div>
-
                 <!-- 3. PWA 상태 카드 -->
                 <div class="card mt-4">
                     <div class="card-header">
@@ -447,6 +427,26 @@
                 <div class="info-box mb-3">
                     <i class="fa-solid fa-circle-info"></i>
                     <p>학사일정 관련 소식 및 업데이트 개선사항 안내 목록입니다. 인터넷 주소(URL) 터치 시 해당 웹사이트로 이동합니다.</p>
+                </div>
+
+                <!-- 상단 강조 공지 배너 관리 카드 (관리자 전용) -->
+                <div class="card mb-4 admin-only">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-bullhorn"></i> 상단 강조 공지 배너 설정</h3>
+                        <span id="badge-notice-status" class="badge">관리자 기능</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">메인 달력 화면 상단에 띄울 상단 강조 공지 문구를 설정합니다.</p>
+                        <div class="form-group">
+                            <label for="notice-text">상단 강조 공지 문구</label>
+                            <textarea id="notice-text" class="form-control" rows="2" placeholder="예: [안내] 2학기 시간표 변경 및 신규 학사일정이 업데이트되었습니다. http://..."></textarea>
+                        </div>
+                        <div class="form-group flex items-center gap-2 mt-2">
+                            <input type="checkbox" id="notice-active" checked style="width: 18px; height: 18px; cursor: pointer;">
+                            <label for="notice-active" style="margin-bottom: 0; cursor: pointer; font-weight: 500;">메인 화면 상단에 강조 공지 배너 표시하기</label>
+                        </div>
+                        <button id="btn-save-notice" class="btn btn-primary btn-block mt-3"><i class="fa-solid fa-floppy-disk"></i> 강조 공지 저장 및 즉시 배포</button>
+                    </div>
                 </div>
 
                 <!-- 누적 공지사항 리스트 컨테이너 -->
