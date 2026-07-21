@@ -1260,3 +1260,17 @@ body.dark-mode .btn-order-arrow {
 body.dark-mode .btn-order-arrow:active {
     background-color: rgba(255, 255, 255, 0.1);
 }
+
+/* 하이퍼링크 자동 변환 전용 스타일 */
+.event-desc-link {
+    color: #2563eb;
+    text-decoration: underline;
+    word-break: break-all;
+    font-weight: 500;
+}
+.event-desc-link:hover {
+    color: #1d4ed8;
+}
+body.dark-mode .event-desc-link {
+    color: #60a5fa;
+}

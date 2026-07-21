@@ -618,7 +618,7 @@ function renderDayEvents() {
             case 'etc': categoryText = '내부'; break;
         }
         
-        const descHtml = e.desc && e.desc.trim() ? `<p>${escapeHTML(e.desc)}</p>` : '';
+        const descHtml = e.desc && e.desc.trim() ? `<p>${linkify(e.desc)}</p>` : '';
         item.innerHTML = `
             <div class="event-item-content">
                 <h4>${escapeHTML(e.title)}</h4>
@@ -668,6 +668,29 @@ function escapeHTML(str) {
     return str.replace(/[&<>'"]/g, 
         tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
     );
+}
+
+function linkify(text) {
+    if (!text) return '';
+    // 1. XSS 및 부등호 기호 이스케이프 선처리
+    let escaped = escapeHTML(text);
+    
+    // 2. 엔터(\n) 줄바꿈을 <br> 태그로 변환 (서식 보존)
+    escaped = escaped.replace(/\r?\n/g, '<br>');
+
+    // 3. https:// 또는 http:// URL 자동 인식 및 하이퍼링크 변환
+    const urlPattern = /(https?:\/\/[^\s<]+)/g;
+    escaped = escaped.replace(urlPattern, (url) => {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="event-desc-link">${url}</a>`;
+    });
+
+    // 4. www. 로 시작하는 링크 자동 인식 및 https:// 보정 변환
+    const wwwPattern = /(^|[^\/])(www\.[^\s<]+)/g;
+    escaped = escaped.replace(wwwPattern, (match, p1, p2) => {
+        return `${p1}<a href="https://${p2}" target="_blank" rel="noopener noreferrer" class="event-desc-link">${p2}</a>`;
+    });
+
+    return escaped;
 }
 
 // 9. 모달 오픈 제어
@@ -724,7 +747,7 @@ function showEventDetail(eventObj) {
     badge.innerText = categoryText;
     title.innerText = eventObj.title;
     date.innerText = eventObj.date;
-    desc.innerText = eventObj.desc || '등록된 상세 설명이 없습니다.';
+    desc.innerHTML = eventObj.desc ? linkify(eventObj.desc) : '등록된 상세 설명이 없습니다.';
     
     // 삭제 버튼 동작 설정
     document.getElementById('btn-delete-event').onclick = async () => {
