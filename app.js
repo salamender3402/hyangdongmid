@@ -18,7 +18,8 @@ let state = {
     isSyncing: false,           // 대량 파이어베이스 동기화 중 실시간 리스너 무한 루프 방지용 락 플래그
     dbMode: 'local',            // 'local' 또는 'firebase'
     firebaseConfig: null,       // Firebase 연동 정보
-    deferredPrompt: null        // PWA 설치 프롬프트 보관용
+    deferredPrompt: null,       // PWA 설치 프롬프트 보관용
+    notice: { text: '', active: true } // 학사일정 공지사항 & 개선사항 관리
 };
 
 // 나이스 공식 API 설정 (향동중학교 고정)
@@ -87,6 +88,13 @@ function loadLocalStorageData() {
     } catch (e) {
         console.warn('Failed to parse local contacts:', e);
         state.contacts = [...MOCK_CONTACTS];
+    }
+    
+    try {
+        const localNotice = localStorage.getItem('teacherschedule_notice');
+        if (localNotice) state.notice = JSON.parse(localNotice);
+    } catch (e) {
+        console.warn('Failed to parse local notice:', e);
     }
     
     sortEventsByDate();
@@ -251,11 +259,27 @@ function initFirebase(config) {
             console.error("Firestore contacts subscription error: ", error);
         });
 
+        // C. 공지사항(notice) 실시간 구독
+        db.collection('settings').doc('notice').onSnapshot((doc) => {
+            if (doc.exists) {
+                state.notice = doc.data();
+                localStorage.setItem('teacherschedule_notice', JSON.stringify(state.notice));
+                renderNotice();
+                syncNoticeForm();
+            }
+        });
+
         // DB 연동 상태 배지 변경
         const badgeDb = document.getElementById('badge-db-status');
         if (badgeDb) {
             badgeDb.innerText = '클라우드 연동됨';
             badgeDb.className = 'badge badge-success';
+        }
+        
+        // 공지사항 저장 버튼
+        const btnSaveNotice = document.getElementById('btn-save-notice');
+        if (btnSaveNotice) {
+            btnSaveNotice.addEventListener('click', saveNotice);
         }
         
         // 설정 폼 버튼 갱신 및 해제 버튼 노출
@@ -691,6 +715,57 @@ function linkify(text) {
     });
 
     return escaped;
+}
+
+// 공지사항 렌더링
+function renderNotice() {
+    const banner = document.getElementById('notice-banner');
+    const content = document.getElementById('notice-banner-content');
+    if (!banner || !content) return;
+
+    if (state.notice && state.notice.active && state.notice.text && state.notice.text.trim()) {
+        content.innerHTML = linkify(state.notice.text);
+        banner.classList.remove('hidden');
+    } else {
+        banner.classList.add('hidden');
+    }
+}
+
+// 설정 입력 폼 동기화
+function syncNoticeForm() {
+    const textInput = document.getElementById('notice-text');
+    const activeInput = document.getElementById('notice-active');
+    if (textInput && state.notice) textInput.value = state.notice.text || '';
+    if (activeInput && state.notice) activeInput.checked = Boolean(state.notice.active);
+}
+
+// 공지사항 저장
+async function saveNotice() {
+    const textInput = document.getElementById('notice-text');
+    const activeInput = document.getElementById('notice-active');
+    if (!textInput || !activeInput) return;
+
+    const noticeData = {
+        text: textInput.value.trim(),
+        active: activeInput.checked,
+        updatedAt: new Date().toISOString()
+    };
+
+    state.notice = noticeData;
+    localStorage.setItem('teacherschedule_notice', JSON.stringify(noticeData));
+    renderNotice();
+
+    if (state.dbMode === 'firebase' && db) {
+        try {
+            await db.collection('settings').doc('notice').set(noticeData);
+            alert('공지사항이 클라우드 서버에 저장 및 실시간 배포되었습니다!');
+        } catch (e) {
+            console.error('공지사항 저장 실패:', e);
+            alert('클라우드 저장 실패: ' + e.message);
+        }
+    } else {
+        alert('로컬에 공지사항이 저장되었습니다.');
+    }
 }
 
 // 9. 모달 오픈 제어
@@ -1893,6 +1968,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCalendar();
     renderDayEvents();
     renderContacts();
+    renderNotice();
+    syncNoticeForm();
     
     // 상단 날짜 동기화
     const statusDate = document.getElementById('status-date');
