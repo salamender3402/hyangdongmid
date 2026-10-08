@@ -1,10 +1,23 @@
-const CACHE_NAME = 'teacherschedule-v2';
+const CACHE_NAME = 'teacherschedule-v3';
 const ASSETS = [
   'index.html',
   'style.css',
-  'app.js',
   'manifest.json',
   'icon.png',
+  'src/main.js',
+  'src/core/state.js',
+  'src/utils/helpers.js',
+  'src/services/authService.js',
+  'src/services/storageService.js',
+  'src/services/neisService.js',
+  'src/services/firebaseService.js',
+  'src/services/importExportService.js',
+  'src/views/calendarView.js',
+  'src/views/mealView.js',
+  'src/views/contactView.js',
+  'src/views/noticeView.js',
+  'src/views/settingsView.js',
+  'src/views/modalView.js',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
 

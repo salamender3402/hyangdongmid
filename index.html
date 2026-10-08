@@ -284,21 +284,6 @@
                     </div>
                 </div>
 
-                <!-- 2.5 구글 스프레드시트 연동 카드 (관리자 전용) -->
-                <div class="card mt-4 admin-only">
-                    <div class="card-header">
-                        <h3><i class="fa-solid fa-file-excel"></i> 구글 스프레드시트 일정 일괄 연동</h3>
-                        <span id="badge-gsheet-status" class="badge">설정 필요</span>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">구글 스프레드시트 공유 링크(뷰어 권한)를 등록하면 엑셀 형태로 작성된 대량의 학사일정을 한 번에 동기화할 수 있습니다.</p>
-                        <div class="form-group">
-                            <label for="gsheet-url">구글 스프레드시트 공유 링크</label>
-                            <input type="text" id="gsheet-url" class="form-control" placeholder="https://docs.google.com/spreadsheets/d/.../edit?usp=sharing">
-                        </div>
-                        <button id="btn-sync-gsheet" class="btn btn-primary btn-block"><i class="fa-solid fa-rotate"></i> 구글 시트 일정 일괄 동기화</button>
-                    </div>
-                </div>
 
                 <!-- 2.6 나이스(NEIS) 학사일정 동기화 카드 (관리자 전용) -->
                 <div class="card mt-4 admin-only">
@@ -621,6 +606,6 @@
     <!-- Firebase SDK Compat 라이브러리 연결 (로컬 file:// 실행 시 CORS 방지) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="src/main.js"></script>
 </body>
 </html>
