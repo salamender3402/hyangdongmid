@@ -197,7 +197,7 @@ async function handleSyncNeisClick() {
     try {
         const result = await syncNeisSchedule({ officeCode, schoolCode, year });
         if (result.success) {
-            alert(`나이스 학사일정 동기화 완료! (${result.source === 'mock' ? '모의 데이터' : '공식 API'})\n총 ${result.count}건의 신규 일정이 추가되었습니다.`);
+            alert(`나이스 학사일정 동기화 완료! (${result.source === 'mock' ? '모의 데이터' : '공식 API'})\n총 ${result.count}건의 학사일정이 최신 상태로 반영되었습니다.`);
             renderCalendar();
             renderDayEvents();
         } else {

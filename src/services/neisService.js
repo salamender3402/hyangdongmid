@@ -10,6 +10,7 @@
 import { state, NEIS_API_KEY, NEIS_DEFAULT_SCHOOL, NEIS_DEFAULT_OFFICE } from '../core/state.js';
 import { sortEventsByDate } from '../utils/helpers.js';
 import { saveLocalEvents, getCachedMeals, setCachedMeals } from './storageService.js';
+import { isFirebaseConnected, runFirestoreBatch } from './firebaseService.js';
 
 // ------------------------------------------------------------------
 // 나이스 API 인증키 로컬 재정의(override) localStorage 키
@@ -97,26 +98,51 @@ function buildMockScheduleEvents(year) {
 }
 
 /**
- * 새로 추가된(중복 아닌) 일정들을 state.events에 반영하고, 정렬 후 localStorage에 영속화한다.
- * @param {Array<{id: string, title: string, date: string, category: string, desc: string}>} newEvents - 추가할 일정 배열
- * @returns {number} 실제로 추가된 일정 건수
+ * 새로 가져온 나이스 공식 일정 목록을 state.events에 교체 반영한다.
+ * - 교직원이 수동으로 등록한 내부 일정(category !== 'neis')은 100% 안전하게 유지한다.
+ * - 해당 학년도 범위(3월 1일 ~ 이듬해 2월 말일)의 기존 나이스 공식 일정(category === 'neis')만 선별하여 제거하고,
+ *   새로 가져온 최신 나이스 일정들로 온전히 교체하여 날짜 변경/명칭 수정/취소/중복 잔여 문제를 방지한다.
+ * - 파이어베이스 연동 중인 경우 Firestore DB에도 이전 나이스 일정 삭제 및 새 나이스 일정 등록을 일괄 배치(batch) 반영한다.
+ * @param {Array<{id: string, title: string, date: string, category: string, desc: string}>} newEvents - 최신 나이스 일정 배열
+ * @param {string|number} year - 학사일정 기준 연도
+ * @returns {Promise<number>} 실제로 반영된 최신 나이스 일정 건수
  */
-function mergeNewEvents(newEvents) {
-    let importCount = 0;
-    newEvents.forEach((event) => {
-        const exists = state.events.some((e) => e.date === event.date && e.title === event.title);
-        if (!exists) {
-            state.events.push(event);
-            importCount++;
-        }
-    });
+async function replaceNeisEvents(newEvents, year) {
+    const startDate = `${year}-03-01`;
+    const endDate = `${Number(year) + 1}-02-29`;
 
-    if (importCount > 0) {
-        state.events = sortEventsByDate(state.events);
-        saveLocalEvents(state.events);
+    // 해당 학년도 범위의 기존 나이스 일정 판별
+    const isTargetYearNeis = (e) => e.category === 'neis' && e.date >= startDate && e.date <= endDate;
+
+    // 1. 파이어베이스 연동 중이면 Firestore DB 일괄 배치(batch) 반영
+    if (isFirebaseConnected()) {
+        try {
+            await runFirestoreBatch((batch, db) => {
+                state.events
+                    .filter(isTargetYearNeis)
+                    .forEach((ev) => batch.delete(db.collection('schedules').doc(ev.id)));
+
+                newEvents.forEach((ev) => {
+                    const docRef = db.collection('schedules').doc(ev.id);
+                    batch.set(docRef, {
+                        title: ev.title,
+                        date: ev.date,
+                        category: 'neis',
+                        desc: ev.desc || ''
+                    });
+                });
+            });
+        } catch (fbErr) {
+            console.warn('[neisService] Firestore 나이스 일정 동기화 실패 (로컬 저장은 유지됨):', fbErr);
+        }
     }
 
-    return importCount;
+    // 2. 로컬 상태(state.events) 교체: 기존 해당 연도 나이스 일정만 제외하고 내부 일정은 보존
+    const preservedEvents = state.events.filter((e) => !isTargetYearNeis(e));
+    state.events = sortEventsByDate([...preservedEvents, ...newEvents]);
+    saveLocalEvents(state.events);
+
+    return newEvents.length;
 }
 
 // ------------------------------------------------------------------
@@ -170,7 +196,7 @@ export async function syncNeisSchedule({
             desc: row.EVENT_CN ? row.EVENT_CN.trim() : ''
         }));
 
-        const importCount = mergeNewEvents(newEvents);
+        const importCount = await replaceNeisEvents(newEvents, year);
         return { success: true, count: importCount, source: 'api' };
     } catch (error) {
         console.warn('나이스 학사일정 API 연동 실패로 모의 데이터를 주입합니다:', error);
@@ -180,17 +206,16 @@ export async function syncNeisSchedule({
 
 /**
  * 나이스 API 연동이 불가능할 때 사용하는 안전한 모의(mock) 학사일정 데이터를 주입한다.
- * 이미 동일한 날짜/제목의 일정이 있으면 건너뛰어 중복을 방지한다.
  * @param {string|number} year - 학사일정 기준 연도
- * @returns {{success: boolean, count: number, source: 'mock'}} 동기화 결과
+ * @returns {Promise<{success: boolean, count: number, source: 'mock'}>} 동기화 결과
  */
-export function simulateNeisSync(year) {
+export async function simulateNeisSync(year) {
     const newEvents = buildMockScheduleEvents(year).map((se, i) => ({
         id: `ev-sim-${Date.now()}-${i}`,
         ...se
     }));
 
-    const importCount = mergeNewEvents(newEvents);
+    const importCount = await replaceNeisEvents(newEvents, year);
     return { success: true, count: importCount, source: 'mock' };
 }
 
@@ -200,13 +225,14 @@ export function simulateNeisSync(year) {
 
 /**
  * 앱 구동 시 나이스 공식 학사일정을 조용히(팝업 없이) 백그라운드에서 자동 동기화한다.
- * 이미 나이스 공식 일정(category === 'neis')이 하나라도 있으면 비용 절감을 위해
- * API 호출 자체를 생략한다. API 호출이 실패하면 autoSyncNeisMockSilent()로 폴백한다.
+ * 이미 해당 연도의 나이스 공식 일정이 있으면 비용 절감을 위해 API 호출을 생략한다.
  * @param {string|number} [year] - 학사일정 기준 연도 (기본값: 올해)
  * @returns {Promise<{success: boolean, count: number, source: 'skip'|'api'|'mock'}>} 동기화 결과
  */
 export async function autoSyncNeisBackground(year = String(new Date().getFullYear())) {
-    const hasNeisEvents = state.events.some((e) => e.category === 'neis');
+    const startDate = `${year}-03-01`;
+    const endDate = `${Number(year) + 1}-02-29`;
+    const hasNeisEvents = state.events.some((e) => e.category === 'neis' && e.date >= startDate && e.date <= endDate);
     if (hasNeisEvents) {
         console.log('[Auto Sync] 이미 나이스 공식 학사일정이 연동되어 있으므로 API 호출을 생략합니다.');
         return { success: true, count: 0, source: 'skip' };
@@ -235,8 +261,8 @@ export async function autoSyncNeisBackground(year = String(new Date().getFullYea
             desc: row.EVENT_CN ? row.EVENT_CN.trim() : ''
         }));
 
-        const importCount = mergeNewEvents(newEvents);
-        console.log(`[Auto Sync] 나이스 학사일정 백그라운드 자동 갱신 완료 (${importCount}건 추가됨)`);
+        const importCount = await replaceNeisEvents(newEvents, year);
+        console.log(`[Auto Sync] 나이스 학사일정 백그라운드 자동 갱신 완료 (${importCount}건 반영됨)`);
         return { success: true, count: importCount, source: 'api' };
     } catch (error) {
         console.warn('[Auto Sync] API 실패로 백그라운드 모의 데이터를 주입합니다:', error);
@@ -247,16 +273,16 @@ export async function autoSyncNeisBackground(year = String(new Date().getFullYea
 /**
  * 나이스 API 백그라운드 자동 동기화가 실패했을 때 호출되는 조용한(팝업 없는) 모의 데이터 폴백.
  * @param {string|number} year - 학사일정 기준 연도
- * @returns {{success: boolean, count: number, source: 'mock'}} 동기화 결과
+ * @returns {Promise<{success: boolean, count: number, source: 'mock'}>} 동기화 결과
  */
-export function autoSyncNeisMockSilent(year) {
+export async function autoSyncNeisMockSilent(year) {
     const newEvents = buildMockScheduleEvents(year).map((se, i) => ({
         id: `ev-sim-${Date.now()}-${i}`,
         ...se
     }));
 
-    const importCount = mergeNewEvents(newEvents);
-    console.log(`[Auto Sync] 모의 학사일정 백그라운드 자동 갱신 완료 (${importCount}건 추가됨)`);
+    const importCount = await replaceNeisEvents(newEvents, year);
+    console.log(`[Auto Sync] 모의 학사일정 백그라운드 자동 갱신 완료 (${importCount}건 반영됨)`);
     return { success: true, count: importCount, source: 'mock' };
 }
 
